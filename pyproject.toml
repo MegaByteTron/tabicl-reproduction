@@ -1,0 +1,41 @@
+[project]
+name = "tabicl-reproduction"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "MegaByteTron", email = "y2r2497h6t@privaterelay.appleid.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "matplotlib>=3.11.2",
+    "numpy>=2.5.4",
+    "scikit-learn>=1.9.1",
+    "torch>=2.15.0",
+]
+
+[project.scripts]
+tabicl-reproduction = "tabicl_reproduction:main"
+
+[build-system]
+requires = ["uv_build>=0.13.1,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.17.3",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+src = ["src"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle
+    "F",   # Pyflakes
+    "I",   # Import sorting
+    "B",   # Common bug patterns
+    "UP",  # Python modernization
+]
