@@ -23,7 +23,9 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "pytest>=9.2.0",
     "ruff>=0.17.3",
+    "ty>=0.0.95",
 ]
 
 [tool.ruff]
@@ -39,3 +41,18 @@ select = [
     "B",   # Common bug patterns
     "UP",  # Python modernization
 ]
+# Ruff's formatter does not wrap comments automatically.
+# Avoid lint errors from long comments in upstream code.
+ignore = ["E501"]
+
+# torch's type stubs make ty flag standard nn.Module idioms (buffers, forward overrides)
+[[tool.ty.overrides]]
+include = ["src/tabicl_reproduction/model/model.py"]
+
+[tool.ty.overrides.rules]
+invalid-mutable-override = "ignore"
+invalid-method-override = "ignore"
+call-non-callable = "ignore"
+not-subscriptable = "ignore"
+no-matching-overload = "ignore"
+unresolved-attribute = "ignore"
