@@ -30,15 +30,23 @@ from model import NanoTabICLv2
 import torch
 
 model = NanoTabICLv2(max_classes=10, out_dim=10)  # original model size
-X_train_and_test = torch.randn(batch_size, n_train+n_test, n_cols)
+X_train_and_test = torch.randn(batch_size, n_train + n_test, n_cols)
 y_train = torch.randint(10, size=(batch_size, n_train)).float()
 y_test_pred_logits = model(X_train_and_test, y_train)
 
 # if you want a smaller model + regression with 999 quantiles instead
 # warning: for regression, you need to standardize y yourself (and backtransform the output)
-model = NanoTabICLv2(max_classes=0, out_dim=999, embed_dim=96,
-                 col_num_blocks=2, row_num_blocks=2, icl_num_blocks=4,
-                 col_nhead=4, row_nhead=4, icl_nhead=4)
+model = NanoTabICLv2(
+    max_classes=0,
+    out_dim=999,
+    embed_dim=96,
+    col_num_blocks=2,
+    row_num_blocks=2,
+    icl_num_blocks=4,
+    col_nhead=4,
+    row_nhead=4,
+    icl_nhead=4,
+)
 y_train = torch.randn(batch_size, n_train)
 y_test_pred_quantiles = model(X_train_and_test, y_train)
 ```
