@@ -24,17 +24,20 @@ def rand_dataset_plain(
             feature_nodes, replace=True, size=len(cat_sizes)
         )
 
-        for idx, (node_idx, cat_size) in enumerate(zip(feature_node_idxs, cat_sizes)):
+        for idx, (node_idx, cat_size) in enumerate(
+            zip(feature_node_idxs, cat_sizes, strict=False)
+        ):
             node_cat_sizes[node_idx][f"{feature_group}_{idx}"] = cat_size
 
     # ----- Evaluate computation graph -----
-    node_values = [None for _ in range(n_nodes)]
+    node_values: list[torch.Tensor] = []
     columns = dict()
     for node_idx in range(n_nodes):
         parent_values = [node_values[parent] for parent in graph[node_idx]]
-        node_values[node_idx], out_features = rand_node_func(
+        node_value, out_features = rand_node_func(
             node_cat_sizes[node_idx], parent_values, n_samples
         )
+        node_values.append(node_value)
         columns.update(out_features)
     for col in columns.values():
         col[~torch.isfinite(col)] = 0  # fill nan/inf with zero
@@ -588,7 +591,7 @@ if __name__ == "__main__":
             x[:, 0],
             x[:, 1],
             c=y,
-            cmap=ListedColormap(plt.get_cmap("tab10").colors[:n_classes]),
+            cmap=ListedColormap(plt.get_cmap("tab10")(range(n_classes))),
             vmin=0,
             vmax=n_classes - 1,
             s=40,
