@@ -5,6 +5,10 @@ for colorblind readers and in grayscale print. The eight colors are a
 colorblind-checked categorical palette, used in this fixed order.
 """
 
+from typing import Any
+
+from matplotlib.typing import RcKeyType
+
 CLASS_COLORS = (
     "#2a78d6",  # blue
     "#eb6834",  # orange
@@ -23,7 +27,7 @@ INK_MUTED = "#898781"  # axis labels
 AXIS = "#c3c2b7"  # axis lines
 UNSEEN = "#b5b3ab"  # test rows whose class never appears in training
 
-RC_PARAMS = {
+RC_PARAMS: dict[RcKeyType, Any] = {
     "figure.facecolor": "white",
     "axes.facecolor": "white",
     "axes.edgecolor": AXIS,

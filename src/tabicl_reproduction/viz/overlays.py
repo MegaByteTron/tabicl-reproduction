@@ -75,6 +75,7 @@ class DecisionBoundary:
                 f"got {sample.X_train.shape[1]}"
             )
         X_train, y_train = to_numpy(sample.X_train), to_numpy(sample.y_train)
+        assert view.limits is not None, "show() sets limits before overlays"
         low, high = view.limits  # the visible area of the panel
         xs = np.linspace(low[0], high[0], self.resolution)
         ys = np.linspace(low[1], high[1], self.resolution)
