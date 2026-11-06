@@ -19,6 +19,11 @@ from .overlays import Overlay
 from .style import INK_SECONDARY, RC_PARAMS, UNSEEN, class_style
 from .view import make_view, to_numpy
 
+# Spacing above each panel, in points.
+SUBTITLE_SIZE = 7
+SUBTITLE_OFFSET = 3  # plot -> subtitle
+TITLE_GAP = 4  # subtitle -> title
+
 # Dataset id -> name, for panel titles.
 DATASET_NAMES = {
     dataset_id: name
@@ -197,18 +202,22 @@ def _draw_panel(
     if unseen.any():
         ax.scatter(*P_test[unseen].T, s=18, marker="x", color=UNSEEN, zorder=4)
 
-    ax.set_title(title, loc="left", pad=12)
+    # Subtitle sits just above the plot, title above it. Both are placed
+    # in points, so the spacing stays the same for any panel size.
     n_classes = len(np.unique(y_train))
-    ax.text(
-        0,
-        1.02,
+    ax.annotate(
         f"{len(X_train)} train · {len(X_test)} test · "
         f"{X_train.shape[1]} feat. · {n_classes} cl.",
-        transform=ax.transAxes,
-        fontsize=7,
+        xy=(0, 1),
+        xycoords="axes fraction",
+        xytext=(0, SUBTITLE_OFFSET),
+        textcoords="offset points",
+        fontsize=SUBTITLE_SIZE,
         color=INK_SECONDARY,
         va="bottom",
     )
+    subtitle_height = 1.2 * SUBTITLE_SIZE  # one line of text
+    ax.set_title(title, loc="left", pad=SUBTITLE_OFFSET + subtitle_height + TITLE_GAP)
     ax.set_xlabel(view.xlabel)
     ax.set_ylabel(view.ylabel)
 
