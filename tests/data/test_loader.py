@@ -1,4 +1,5 @@
 import pickle
+from typing import Any
 
 import numpy as np
 import pytest
@@ -24,7 +25,7 @@ def test_transformation_is_applied():
         X_train, y_train, X_test, y_test = sample
         return X_train * 2, y_train, X_test * 2, y_test  # plain tuple is fine
 
-    kwargs = dict(n_train=30, n_test=10, max_features=3)
+    kwargs: dict[str, Any] = dict(n_train=30, n_test=10, max_features=3)
     plain = first(load_data("prior", **kwargs))
     torch.manual_seed(0)
     np.random.seed(0)

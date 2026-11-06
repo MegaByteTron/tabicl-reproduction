@@ -58,6 +58,8 @@ class OpenMLDataset(IterableDataset[TableSample]):
             )
         X, y, _, _ = dataset.get_data(target=target, dataset_format="dataframe")
 
+        assert isinstance(X, pd.DataFrame) and isinstance(y, pd.Series)
+
         features_path.parent.mkdir(parents=True, exist_ok=True)
         _write_parquet(X, features_path)
         _write_parquet(y.to_frame(name="target"), target_path)
