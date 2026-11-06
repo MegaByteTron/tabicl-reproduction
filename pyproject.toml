@@ -28,6 +28,10 @@ dev = [
     "ruff>=0.17.3",
     "ty>=0.0.95",
 ]
+notebook = [
+    "ipykernel>=7.4.0",
+    "jupyterlab>=4.6.5",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
