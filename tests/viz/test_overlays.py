@@ -15,7 +15,7 @@ def test_decision_boundary_on_2d_table(make_sample):
     overlay = DecisionBoundary(KNeighborsClassifier(5), resolution=20)
     ax = show(make_sample(), overlays=[overlay]).axes[0]
     image = ax.get_images()[0].get_array()
-    assert image.shape == (20, 20, 4)
+    assert image is not None and image.shape == (20, 20, 4)
     # The shading covers exactly the visible area.
     assert tuple(ax.get_images()[0].get_extent()[:2]) == ax.get_xlim()
 
@@ -26,7 +26,9 @@ def test_decision_boundary_single_class_table(make_sample):
     with warnings.catch_warnings():
         warnings.simplefilter("error")  # e.g. division by zero
         ax = show(sample, overlays=[overlay]).axes[0]
-    alpha = ax.get_images()[0].get_array()[..., 3]
+    image = ax.get_images()[0].get_array()
+    assert image is not None
+    alpha = image[..., 3]
     assert np.allclose(alpha, overlay.max_alpha)
 
 
