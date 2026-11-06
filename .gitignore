@@ -2,15 +2,39 @@
 __pycache__/
 *.py[cod]
 *.egg-info/
-build/
-dist/
-
-# Environments
-.venv/
 
 # Tool caches
 .pytest_cache/
 .ruff_cache/
+.ty_cache/
+.mypy_cache/
+
+# Virtual environments
+.venv/
+venv/
+
+# Build artifacts
+build/
+dist/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# IDE and OS
+.DS_Store
+.idea/
+.vscode/
+
+# ML experiments
+checkpoints/
+outputs/
+
+# Model artifacts
+*.pt
+*.pth
+*.ckpt
 
 # Downloaded datasets from openml
 .cache/
@@ -18,6 +42,3 @@ dist/
 # Local notebooks for trying things out; the assignment forbids submitting them
 notebooks/
 .ipynb_checkpoints/
-
-# OS
-.DS_Store

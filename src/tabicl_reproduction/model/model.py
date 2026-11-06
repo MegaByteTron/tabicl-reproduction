@@ -250,10 +250,10 @@ class TransformerBlock(nn.MultiheadAttention, TableAttnBase):
 class Rope(nn.Module):  # rotary positional encoding
     def __init__(self, head_dim: int, theta: float):
         super().__init__()
-        self.half = head_dim // 2
+        self.half_dim = head_dim // 2
         self.register_buffer(
             "inv_freq",
-            theta ** torch.linspace(0.0, -1.0, self.half + 1)[:-1],
+            theta ** torch.linspace(0.0, -1.0, self.half_dim + 1)[:-1],
             persistent=False,
         )
         self.register_buffer("sin", torch.empty(0), persistent=False)
@@ -276,8 +276,8 @@ class Rope(nn.Module):  # rotary positional encoding
 
         sin, cos = self.sin[:seq_len], self.cos[:seq_len]
         x1, x2 = (
-            x[..., : self.half],
-            x[..., self.half :],
+            x[..., : self.half_dim],
+            x[..., self.half_dim :],
         )  # (batch_size, num_heads, seq_len, half_head_dim)
         return torch.cat([x1 * cos - x2 * sin, x1 * sin + x2 * cos], dim=-1).to(x.dtype)
 
