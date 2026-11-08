@@ -1,5 +1,12 @@
 # NanoTabICL: a minimal TabICLv2 implementation
 
+## Course milestone implementation
+
+See [MS1_GUIDE.md](MS1_GUIDE.md) for the added pretraining loop, resumable
+checkpoints, classifier interface, benchmark preparation, baseline comparison,
+and report figures. The sections below describe the original upstream code;
+the previously missing training/interface components are supplied on this branch.
+
 | [Full TabICLv2 code](https://github.com/soda-inria/tabicl) | [TabICLv2 Paper](https://arxiv.org/abs/2602.11139) |
 |----------------------------------------------------|------------------------|
 
