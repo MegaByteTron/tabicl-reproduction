@@ -307,4 +307,5 @@ if __name__ == "__main__":  # check that forward pass works
     model = NanoTabICLv2(max_classes=10, out_dim=10)
     x = torch.randn(n_batch, n_train + n_test, n_cols)
     y = torch.randint(10, size=(n_batch, n_train))
+    output_shape = model(x, y).shape
     print(f"{model(x,y).shape=}")
