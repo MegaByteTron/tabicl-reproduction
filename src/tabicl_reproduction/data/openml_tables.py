@@ -7,7 +7,7 @@ from pathlib import Path
 import openml
 import pandas as pd
 import torch
-from torch.utils.data import IterableDataset
+from torch.utils.data import IterableDataset, get_worker_info
 
 from .benchmarks import TARGET_OVERRIDES
 from .preprocessing import (
@@ -120,7 +120,13 @@ class OpenMLDataset(IterableDataset[TableSample]):
         )
 
     def __iter__(self) -> Iterator[TableSample]:
-        for dataset_id in self.dataset_ids:
+        # With DataLoader workers, every worker runs this loop; give each one
+        # its own share of the datasets so none is loaded twice.
+        worker = get_worker_info()
+        dataset_ids = self.dataset_ids
+        if worker is not None:
+            dataset_ids = dataset_ids[worker.id :: worker.num_workers]
+        for dataset_id in dataset_ids:
             yield self.load(dataset_id)
 
 

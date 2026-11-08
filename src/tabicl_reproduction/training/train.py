@@ -1,12 +1,27 @@
+"""Training entry point.
+
+Locally:      python src/tabicl_reproduction/training/train.py model=tiny
+Resume:       ... resume=<old run dir>
+"""
+
 import random
+from collections.abc import Callable, Iterable
+from pathlib import Path
 
 import numpy as np
-import schedulefree
-import torch as tr
+import torch
+from ml_project_template.config import run
+from ml_project_template.utils import get_output_dir
 from torch import nn
+from torch.optim import Optimizer
+from torch.optim.lr_scheduler import LRScheduler
 
-from tabicl_reproduction.data import load_data
+from tabicl_reproduction.data import TableSample
 from tabicl_reproduction.model import NanoTabICLv2
+from tabicl_reproduction.training.checkpoint import Checkpointer
+from tabicl_reproduction.training.configs import Run
+from tabicl_reproduction.training.evaluator import Evaluator
+from tabicl_reproduction.training.metrics import MetricsLogger
 from tabicl_reproduction.training.trainer import Trainer
 
 
@@ -14,28 +29,83 @@ def set_seed(seed: int) -> None:
     # The prior draws from the global numpy and torch generators.
     random.seed(seed)
     np.random.seed(seed)
-    tr.manual_seed(seed)
+    torch.manual_seed(seed)
 
 
-def train():
-    set_seed(0)
+def main(
+    cfg: Run,
+    model: NanoTabICLv2,
+    criterion: nn.Module,
+    optimizer: Callable[..., Optimizer],
+    scheduler: Callable[..., LRScheduler],
+    data: Iterable[TableSample],
+    evaluator: Callable[..., Evaluator] | None = None,
+    device: str = "auto",
+    epochs: int = 10,
+    steps_per_epoch: int = 100,
+    accum_steps: int = 8,
+    clip_norm: float | None = 1.0,
+    precision: str = "auto",
+    log_every: int = 10,
+    checkpoint_every_min: float = 20.0,
+    monitor: str = "eval/log_loss",
+    resume: str | None = None,
+    out_dir: str | None = None,
+) -> Trainer:
+    """Train a model on the prior; every argument is a config field.
 
-    model = NanoTabICLv2(max_classes=10, out_dim=10)
+    One epoch = steps_per_epoch optimizer steps of accum_steps tables each,
+    followed by evaluation and a checkpoint.
+    """
+    out_dir_path = Path(out_dir) if out_dir is not None else get_output_dir()
+    # Faster float32 matmuls on Ampere+ GPUs with negligible precision loss.
+    torch.backends.cuda.matmul.allow_tf32 = True
+    torch.backends.cudnn.allow_tf32 = True
 
-    optimizer = schedulefree.AdamWScheduleFree(
-        model.parameters(), lr=4e-3, weight_decay=0.0
+    built_optimizer = optimizer(model.parameters())
+    trainer = Trainer(
+        model,
+        built_optimizer,
+        criterion,
+        device=None if device == "auto" else device,
+        scheduler=scheduler(built_optimizer, total_steps=epochs * steps_per_epoch),
+        accum_steps=accum_steps,
+        clip_norm=clip_norm,
+        precision=precision,
     )
-    criterion = nn.CrossEntropyLoss()
+    checkpointer = Checkpointer(out_dir_path, checkpoint_every_min, monitor=monitor)
+    if resume is not None:
+        checkpointer.load(trainer, resume)
+        print(f"Resumed from {resume} at step {trainer.step}, epoch {trainer.epoch}")
+    checkpointer.install_signal_handlers(trainer)
 
-    trainer = Trainer(model, optimizer, criterion)
+    logger = MetricsLogger(out_dir_path)
+    logger.write_run_info(
+        commit=cfg.commit,
+        seed=cfg.seed,
+        resumed_from=resume,
+        device=str(trainer.device),
+    )
+    print(f"Writing checkpoints and metrics to {out_dir_path}")
 
-    dataloader = load_data()
-    trainer.fit(dataloader, n_epochs=1)
+    trainer.fit(
+        data,
+        n_epochs=epochs,
+        steps_per_epoch=steps_per_epoch,
+        evaluator=None if evaluator is None else evaluator(model, trainer.device),
+        logger=logger,
+        checkpointer=checkpointer,
+        log_every=log_every,
+    )
+    return trainer
 
 
-def main() -> None:
-    train()
+def cli() -> None:
+    # Registering the configs is kept out of import time, as in the template.
+    from tabicl_reproduction.training import stores  # noqa: F401
+
+    run(main, seed_fn=set_seed)
 
 
 if __name__ == "__main__":
-    main()
+    cli()

@@ -52,6 +52,8 @@ def load_data(
     transformation: Transformation | None = None,
     n_train: Size = None,
     n_test: Size = None,
+    num_workers: int = 0,
+    prefetch_factor: int = 4,
     **kwargs: Any,
 ) -> DataLoader[TableSample]:
     """Lazily yield whole tables as (X_train, y_train, X_test, y_test).
@@ -66,6 +68,10 @@ def load_data(
             For benchmarks it is capped at 2048 rows.
         n_test: test size per table. int = rows, float = fraction.
             If both are None: 80/20 split.
+        num_workers: processes producing tables in parallel (0 = in this
+            process). The prior is CPU-bound, so this keeps a GPU busy.
+            PyTorch gives every worker its own random, numpy and torch seed.
+        prefetch_factor: tables each worker prepares ahead.
         **kwargs: passed to PriorDataset or OpenMLDataset
             (e.g. n_samples, max_features, data_dir, seed, download).
             data_dir defaults to default_data_dir(dataset).
@@ -90,4 +96,10 @@ def load_data(
 
     # Each item is already one whole table, and tables differ in shape, so
     # turn off automatic batching (the default collate can't stack them).
-    return DataLoader(source, batch_size=None)
+    return DataLoader(
+        source,
+        batch_size=None,
+        num_workers=num_workers,
+        prefetch_factor=prefetch_factor if num_workers > 0 else None,
+        persistent_workers=num_workers > 0,
+    )
