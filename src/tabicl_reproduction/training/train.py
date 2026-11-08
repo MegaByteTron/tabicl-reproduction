@@ -7,7 +7,7 @@ from torch import nn
 
 from tabicl_reproduction.data import load_data
 from tabicl_reproduction.model import NanoTabICLv2
-from tabicl_reproduction.new_training.trainer import Trainer
+from tabicl_reproduction.training.trainer import Trainer
 
 
 def set_seed(seed: int) -> None:
