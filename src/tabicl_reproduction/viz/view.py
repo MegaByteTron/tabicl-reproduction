@@ -35,6 +35,8 @@ class View:
     limits: tuple[np.ndarray, np.ndarray] | None = None
 
     def transform(self, X: np.ndarray) -> np.ndarray:
+        if len(X) == 0:  # e.g. a table without test rows
+            return np.empty((0, 2))
         P = X if self.projection is None else self.projection.transform(X)[:, :2]
         if P.shape[1] == 1:
             jitter = np.random.default_rng(0).uniform(-1, 1, size=len(P))

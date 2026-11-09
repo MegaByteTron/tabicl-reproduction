@@ -53,7 +53,8 @@ def show(
     Args:
         x: a sample (X_train, y_train, X_test, y_test) or a list of them.
         outfile: save the figure here; the format follows the extension
-            (use .pdf for the report).
+            (use .pdf for the report). Save through outfile rather than
+            fig.savefig(), so the report settings (300 dpi, tight box) apply.
         overlays: drawn on every panel below the points, e.g.
             DecisionBoundary(...).
         projection: scikit-learn method that reduces tables with more than 2
@@ -73,7 +74,9 @@ def show(
             looking at outliers.
 
     Returns:
-        The matplotlib figure, for further changes or plt.show().
+        The matplotlib figure, for further changes or plt.show(). With
+        outfile the figure is closed after saving, so making many figures
+        in a loop doesn't fill up memory.
     """
     samples = _as_samples(x)
     projection = PCA(n_components=2) if projection is None else projection
@@ -95,18 +98,24 @@ def show(
             squeeze=False,  # Prevent Matplotlib from changing the axes array dimensions
             layout="constrained",
         )
-        for i, (ax, sample) in enumerate(zip(axes.flat, samples, strict=False)):
-            title = titles[i] if titles is not None else _default_title(sample, i)
-            _draw_panel(
-                ax, sample, title, overlays, projection, max_points, robust_limits
-            )
-        for ax in axes.flat[n:]:
-            ax.set_axis_off()
+        try:
+            for i, (ax, sample) in enumerate(zip(axes.flat, samples, strict=False)):
+                title = titles[i] if titles is not None else _default_title(sample, i)
+                _draw_panel(
+                    ax, sample, title, overlays, projection, max_points, robust_limits
+                )
+            for ax in axes.flat[n:]:
+                ax.set_axis_off()
 
-        _add_legend(fig, samples)
+            _add_legend(fig, samples)
 
-        if outfile is not None:
-            fig.savefig(outfile)
+            if outfile is not None:
+                fig.savefig(outfile)
+        except BaseException:
+            plt.close(fig)  # don't leave a half-drawn figure open
+            raise
+    if outfile is not None:
+        plt.close(fig)
     return fig
 
 

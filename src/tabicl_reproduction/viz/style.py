@@ -51,5 +51,10 @@ RC_PARAMS: dict[RcKeyType, Any] = {
 
 
 def class_style(label: int) -> tuple[str, str]:
-    """Color and marker of a class; classes 8 and 9 reuse colors with new shapes."""
-    return CLASS_COLORS[label % len(CLASS_COLORS)], CLASS_MARKERS[label]
+    """Color and marker of a class; classes 8 and 9 reuse colors with new shapes.
+
+    From class 10 on, colors and shapes repeat, so tables with many classes
+    still plot instead of crashing.
+    """
+    color = CLASS_COLORS[label % len(CLASS_COLORS)]
+    return color, CLASS_MARKERS[label % len(CLASS_MARKERS)]

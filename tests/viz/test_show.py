@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import pytest
 from matplotlib.figure import Figure
 from sklearn.manifold import TSNE
@@ -64,3 +65,28 @@ def test_unseen_test_labels_are_drawn(make_sample):
 def test_empty_input_raises():
     with pytest.raises(ValueError, match="at least one table"):
         show([])
+
+
+def test_more_than_ten_classes(make_sample):
+    fig = show(make_sample(n_features=5, n_classes=12))
+    assert len(fig.legends[0].legend_handles) == 12 + 2  # classes + train/test
+
+
+def test_table_without_test_rows(make_sample):
+    for n_features in (1, 2, 5):
+        show(make_sample(n_features=n_features, n_test=0))
+
+
+def test_saved_figure_is_closed(tmp_path, make_sample):
+    fig = show(make_sample(), tmp_path / "tables.png")
+    assert not plt.fignum_exists(fig.number)
+
+
+def test_failed_figure_is_closed(make_sample):
+    def broken_overlay(ax, sample, view):
+        raise RuntimeError("broken")
+
+    before = plt.get_fignums()
+    with pytest.raises(RuntimeError, match="broken"):
+        show(make_sample(), overlays=[broken_overlay])
+    assert plt.get_fignums() == before
