@@ -1521,6 +1521,8 @@ dependencies = [
     { name = "matplotlib" },
     { name = "numpy" },
     { name = "openml" },
+    { name = "pandas" },
+    { name = "pyarrow" },
     { name = "scikit-learn" },
     { name = "torch" },
 ]
@@ -1537,6 +1539,8 @@ requires-dist = [
     { name = "matplotlib", specifier = ">=3.11.2" },
     { name = "numpy", specifier = ">=2.5.4" },
     { name = "openml", specifier = ">=0.15.1" },
+    { name = "pandas", specifier = ">=3.1.1" },
+    { name = "pyarrow", specifier = ">=26.0.1" },
     { name = "scikit-learn", specifier = ">=1.9.1" },
     { name = "torch", specifier = ">=2.15.0" },
 ]
