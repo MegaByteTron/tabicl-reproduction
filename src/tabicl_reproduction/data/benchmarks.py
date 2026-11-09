@@ -72,6 +72,13 @@ TABPFN_VAL_DATASETS: dict[str, int] = {
     "xd6": 40693,
 }
 
+# Some OpenML datasets have several label columns instead of one target.
+# The model predicts one label per row, so we pick one of them. We use the most
+# common species, so both classes have enough rows. The first species in the list appears in only 14.
+TARGET_OVERRIDES: dict[int, str] = {
+    40588: "Swainson.s.Thrush",
+}
+
 
 # Benchmark name (as used by load_data) -> {dataset name: OpenML id}.
 BENCHMARKS: dict[str, dict[str, int]] = {

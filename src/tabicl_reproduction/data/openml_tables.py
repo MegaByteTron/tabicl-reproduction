@@ -9,6 +9,7 @@ import pandas as pd
 import torch
 from torch.utils.data import IterableDataset
 
+from .benchmarks import TARGET_OVERRIDES
 from .preprocessing import (
     Size,
     encode_categoricals,
@@ -50,7 +51,8 @@ class OpenMLDataset(IterableDataset[TableSample]):
             )
 
         dataset = openml.datasets.get_dataset(dataset_id)
-        target = dataset.default_target_attribute
+        default_target = dataset.default_target_attribute or ""
+        target = TARGET_OVERRIDES.get(dataset_id, default_target)
         if not target or "," in target:
             raise ValueError(
                 f"Dataset {dataset_id} ({dataset.name}) has no single target "
@@ -59,6 +61,9 @@ class OpenMLDataset(IterableDataset[TableSample]):
         X, y, _, _ = dataset.get_data(target=target, dataset_format="dataframe")
 
         assert isinstance(X, pd.DataFrame) and isinstance(y, pd.Series)
+        # The other label columns would give the answer away, so drop them.
+        other_labels = [c for c in default_target.split(",") if c != target]
+        X = X.drop(columns=other_labels, errors="ignore")
 
         features_path.parent.mkdir(parents=True, exist_ok=True)
         _write_parquet(X, features_path)

@@ -6,6 +6,7 @@ import pytest
 import torch
 
 from tabicl_reproduction.data import OpenMLDataset
+from tabicl_reproduction.data.benchmarks import TARGET_OVERRIDES
 
 
 def test_openml_from_cache(cached_dataset, check_sample, run_model):
@@ -100,3 +101,23 @@ def test_download_reports_multi_target_dataset(tmp_path, monkeypatch):
     assert list(failures) == [7]
     assert "no single target" in str(failures[7])
     assert (tmp_path / "5" / "features.parquet").exists()  # others still stored
+
+
+def test_download_uses_target_override(tmp_path, monkeypatch):
+    class MultiLabel(FakeOpenMLDataset):
+        name = "birds"
+        default_target_attribute = "a,b"
+
+        def get_data(self, target, dataset_format):
+            X = pd.DataFrame({"a": [0, 1, 0, 1], "b": [1, 1, 0, 0], "c": [0.5] * 4})
+            return X.drop(columns=target), X[target], None, None
+
+    monkeypatch.setattr(openml.datasets, "get_dataset", lambda _: MultiLabel())
+    monkeypatch.setitem(TARGET_OVERRIDES, 7, "a")
+    failures = OpenMLDataset(dataset_ids=(7,), data_dir=tmp_path).download_all()
+
+    assert failures == {}
+    features = pd.read_parquet(tmp_path / "7" / "features.parquet")
+    target = pd.read_parquet(tmp_path / "7" / "target.parquet")["target"]
+    assert list(features.columns) == ["c"]  # the other label "b" is not a feature
+    assert target.tolist() == [0, 1, 0, 1]
