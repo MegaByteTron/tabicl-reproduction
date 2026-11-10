@@ -10,6 +10,9 @@ requires-python = ">=3.13"
 dependencies = [
     "matplotlib>=3.11.2",
     "numpy>=2.5.4",
+    "openml>=0.15.1",
+    "pandas>=3.1.1",
+    "pyarrow>=26.0.1",
     "scikit-learn>=1.9.1",
     "torch>=2.15.0",
 ]
@@ -27,6 +30,13 @@ dev = [
     "ruff>=0.17.3",
     "ty>=0.0.95",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Allows test files with the same name in different folders (tests/data, tests/model).
+# Network tests are skipped by default; run them with: uv run pytest -m network
+addopts = "--import-mode=importlib -m 'not network'"
+markers = ["network: needs internet access (OpenML)"]
 
 [tool.ruff]
 line-length = 88
