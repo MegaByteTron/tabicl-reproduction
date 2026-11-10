@@ -38,3 +38,10 @@ outputs/
 
 # Downloaded datasets from openml
 .cache/
+
+# Local notebooks for trying things out; the assignment forbids submitting them
+notebooks/
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
