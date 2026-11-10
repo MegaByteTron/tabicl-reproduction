@@ -1,0 +1,171 @@
+# Running on the cluster
+
+A practical guide for people who have never used SLURM. Everything below is typed
+by you, on the cluster, by hand.
+
+**Never use coding agents (Claude Code, Copilot agents, etc.) on the cluster.
+Agents on the TU Berlin cluster get the account permanently banned. Do not
+install them there and do not point them at it from your laptop.**
+
+## The basics
+
+- **SLURM** is the queue of the cluster. You do not run heavy code on the login
+  node; you ask SLURM for a machine (a "job") and it starts your code when one is
+  free.
+- **Partitions** are queues with a fixed time limit. A job is **killed** when it
+  reaches the limit of its partition. Shorter partitions start sooner.
+- **Apptainer** runs our container image (Python, PyTorch, all dependencies).
+  The image holds only the libraries. Our code is read from your `git clone`.
+- **submitit** (via the project template) turns
+  `python ... cfg/job=gpu_2h` into a SLURM submission, so no `.sh` files are needed.
+
+Run locally first: see
+[`training/README.md`](../src/tabicl_reproduction/training/README.md). Add
+`cfg/job=<preset>` to any of those commands to submit the same run to the cluster.
+
+## Partitions and presets
+
+| Preset (`cfg/job=`) | Partition | Limit | GPU | CPUs |
+|---|---|---|---|---|
+| `test` | gpu-test | 15 min (1 running job per user) | any | 4 |
+| `gpu_9m` | gpu-9m | 9 min | any | 4 |
+| `gpu_2h` | gpu-2h | 2 h | 40/80 GB, H100, H200 | 8 |
+| `gpu_5h` | gpu-5h | 5 h | 40/80 GB, H100, H200 | 8 |
+| `sweep` | gpu-2h | 2 h per worker | 40/80 GB, H100, H200 | 8 |
+
+The cluster also has gpu-2d and gpu-7d. There is no preset for them on purpose:
+queue times are long and a crash loses days.
+
+How to choose:
+
+- Pick the shortest partition that fits. Short jobs start sooner.
+- Always try new code on `test` first.
+- Long training is a **chain** of `gpu-2h` / `gpu-5h` jobs. Each job saves a
+  checkpoint before its time runs out; start the next one with
+  `resume=<old run dir>` (the `outputs/...` folder printed when the first job was
+  submitted).
+
+## One-time setup
+
+1. **Weights & Biases.** Create an account at wandb.ai, create a project, copy your
+   API key.
+2. **Clone the repo** into your home on the cluster and create `.env` in it:
+   ```bash
+   git clone https://github.com/MegaByteTron/tabicl-reproduction.git
+   cd tabicl-reproduction
+   cat > .env <<'EOF'
+   WANDB_API_KEY=<your key>
+   WANDB_ENTITY=<your wandb user or team>
+   WANDB_PROJECT=<project name>
+   EOF
+   ```
+   `.env` is git-ignored. Never commit it.
+3. **Registry login.** Create a GitHub token at github.com/settings/tokens with
+   `read:packages` and `write:packages`, then on the cluster:
+   ```bash
+   apptainer remote login --username <github user> docker://ghcr.io
+   ```
+   and paste the token as the password.
+4. **Passwordless ssh to the login node** (submitit calls `sbatch` from inside the
+   container through ssh). On the cluster:
+   ```bash
+   ssh-keygen -t ed25519 -C "your_email@example.com"
+   cat ~/.ssh/id_ed25519.pub >> ~/.ssh/authorized_keys
+   ssh $USER@$SLURM_CLUSTER_NAME exit    # must return without any prompt
+   ```
+5. **Build the image once** (on your laptop, in the repo): push a tag so GitHub
+   Actions builds and publishes it.
+   ```bash
+   git tag v0.0.1 && git push --tags
+   ```
+   Wait until the workflow in the repo's Actions tab is green. Make the package
+   visible to the cluster (repo page -> Packages -> `tabicl-reproduction` ->
+   settings) or keep it private and use the login from step 3. Push a new tag
+   whenever `pyproject.toml` / `uv.lock` change.
+
+## Starting
+
+Get a shell inside the container (on a CPU node, no GPU needed for editing and
+checks):
+
+```bash
+srun --partition=cpu-2h --pty bash
+apptainer run --writable-tmpfs oras://ghcr.io/megabytetron/tabicl-reproduction:latest-sif /bin/bash
+cd tabicl-reproduction
+```
+
+The first run downloads the image and can take a few minutes. From this shell
+submit a job:
+
+```bash
+python src/tabicl_reproduction/training/train.py model=small cfg/job=gpu_2h
+```
+
+Run commands from the repo root. The image finds our code through a relative
+`PYTHONPATH=src`.
+
+Without the container shell, `cluster/debug.sbatch` is a plain `sbatch` fallback
+(`mkdir -p logs && sbatch cluster/debug.sbatch model=small`).
+
+## Test order
+
+Do these in order; do not skip ahead.
+
+1. **Import check** (finishes in about a minute):
+
+   ```bash
+   python src/tabicl_reproduction/training/train.py cfg/job=test \
+     model=tiny '~evaluator' epochs=1 steps_per_epoch=2
+   ```
+
+   `~evaluator` skips the benchmark evaluation. The log must show the config,
+   `"device": "cuda"` in the run folder's `run.json`, and no import errors.
+2. **Time-limit test**: start a run that is too long for the 15 minutes of
+   `gpu-test`, so SLURM has to stop it:
+
+   ```bash
+   python src/tabicl_reproduction/training/train.py cfg/job=test \
+     model=small '~evaluator' epochs=1000 steps_per_epoch=20 checkpoint_every_min=2
+   ```
+
+   Shortly before 15 minutes the log must show `Received SIGUSR2, stopping after
+   this step.` and `Stopped at step ...`, and the run folder must contain
+   `last.pt`. If the log ends without these lines, the signal did not reach the
+   training process: `last.pt` is then only as recent as the last 2-minute save.
+   Then continue the run with `resume=<that run folder>` and check that the log
+   says `Resumed from ... at step ...`.
+3. **Short sweep** with `cfg/job=sweep`; check in W&B that both workers report
+   `eval/log_loss`.
+4. **Real runs** on `gpu_2h` / `gpu_5h`, chained with `resume=`.
+
+## Monitoring
+
+```bash
+squeue -u $USER          # your queued and running jobs
+scancel <jobid>          # cancel one job   (scancel -u $USER cancels all)
+seff <jobid>             # after it ends: CPU/memory use and exit state
+```
+
+Logs: submitit writes `<jobid>_log.out` and `<jobid>_log.err` into the run's
+folder under `outputs/` (the path is printed when you submit). Hydra's config and
+training outputs are in the same run folder; live curves are on W&B.
+
+## Troubleshooting
+
+- **Job dies after 5 minutes.** The template's default timeout is 5 minutes. All
+  presets here set their own time; if you write a new preset, set `timeout_min`
+  (or `time_hours`).
+- **Job ends exactly at the limit** (`seff` shows `TIMEOUT`). It was killed.
+  Resume it with `resume=<old run dir>` or pick a longer partition.
+- **`ModuleNotFoundError: tabicl_reproduction`.** You started from the wrong
+  folder. `cd` to the repo root and use the path
+  `src/tabicl_reproduction/training/train.py`.
+- **A new dependency is missing.** The image only contains what was in
+  `pyproject.toml` when the tag was built. Update, push a new tag, wait for the
+  workflow, then run again (add `JOB_IMAGE=oras://...:<tag>-sif` to use a specific
+  version).
+- **`ssh ... Permission denied` when submitting.** Redo the passwordless ssh step.
+- **No internet on the node / W&B hangs.** Use offline mode:
+  `cfg.wandb.mode=offline`, then upload later with `wandb sync <run dir>`.
+- **Disk.** `/home` has a 500 GB quota on shared storage. Avoid creating many small
+  files (delete old `outputs/` folders and extra checkpoints).

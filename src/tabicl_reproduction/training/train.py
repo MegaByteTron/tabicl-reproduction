@@ -1,6 +1,8 @@
 """Training entry point.
 
 Locally:      python src/tabicl_reproduction/training/train.py model=tiny
+On the GPU:   ... cfg/job=gpu_2h          (submits a SLURM job, see cluster/)
+Sweep:        ... cfg/job=sweep
 Resume:       ... resume=<old run dir>
 """
 

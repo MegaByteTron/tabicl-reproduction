@@ -45,3 +45,6 @@ notebooks/
 
 # OS
 .DS_Store
+
+# SLURM logs from cluster/debug.sbatch
+logs/

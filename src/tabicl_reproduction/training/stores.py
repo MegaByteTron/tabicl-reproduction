@@ -6,6 +6,7 @@ single values with `key=value` (optimizer.lr=1e-3, epochs=20).
 
 from hydra_zen import MISSING, builds, store
 
+import tabicl_reproduction.training.jobs  # noqa: F401  (registers cfg/job presets)
 from tabicl_reproduction.training import configs
 from tabicl_reproduction.training.train import main
 
