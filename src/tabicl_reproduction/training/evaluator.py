@@ -1,7 +1,6 @@
 import math
 import time
 import warnings
-from collections.abc import Iterable
 from typing import Any
 
 import numpy as np
@@ -49,7 +48,10 @@ class Evaluator:
         self,
         model: nn.Module,
         device: torch.device | str,
-        tables: Iterable[TableSample] | None = None,
+        # Any, not Iterable: the pydantic parser used by the CLI would turn an
+        # Iterable into a one-shot iterator, and the second evaluation would
+        # find no tables.
+        tables: Any = None,
         max_classes: int = 10,
     ):
         self.model = model
