@@ -37,6 +37,12 @@ class MetricsLogger:
     def log_datasets(self, rows: list[dict[str, Any]], step: int) -> None:
         self._append("eval_datasets.jsonl", [{"step": step} | row for row in rows])
 
+    def update_run_info(self, **extra: Any) -> None:
+        """Add fields (end time, status) to run.json after training."""
+        path = self.directory / "run.json"
+        info = json.loads(path.read_text()) if path.exists() else {}
+        path.write_text(json.dumps(info | extra, indent=2))
+
     def write_run_info(self, **extra: Any) -> dict[str, Any]:
         """Write run.json: where and with what this run was trained."""
         cuda = torch.cuda.is_available()

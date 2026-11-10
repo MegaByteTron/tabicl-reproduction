@@ -108,6 +108,24 @@ def test_stop_request_ends_epoch_after_a_full_step(make_trainer, tables):
     assert status == "stopped" and trainer.epoch == 0
 
 
+def test_stop_logs_a_final_row(make_trainer, tables):
+    class Rows:
+        def __init__(self):
+            self.rows = []
+
+        def log(self, metrics, step):
+            self.rows.append(metrics | {"step": step})
+
+    trainer = make_trainer(accum_steps=2)
+    trainer.stop_requested, trainer.stop_reason = True, "SIGINT"
+    logger = Rows()
+    trainer.fit(tables(), n_epochs=1, steps_per_epoch=5, logger=logger)
+
+    last = logger.rows[-1]
+    assert last["event"] == "stopped" and last["signal"] == "SIGINT"
+    assert last["progress/epoch"] == 0 and last["step"] == trainer.step
+
+
 def test_inference_switches_schedule_free_weights(make_sample):
     model = tiny_model()
     optimizer = schedulefree.AdamWScheduleFree(model.parameters(), lr=1e-2)

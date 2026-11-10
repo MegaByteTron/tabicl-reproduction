@@ -27,7 +27,7 @@ store(
         {"optimizer": "adamw_sf"},
         {"scheduler": "constant"},
         {"data": "prior"},
-        {"evaluator": "tabpfn_val"},
+        {"evaluator": None},
     ],
 )
 
@@ -50,3 +50,4 @@ scheduler_store(configs.WarmupCosine, name="warmup_cosine")
 
 store(configs.PriorData, group="data", name="prior")
 store(configs.TabPFNValEvaluator, group="evaluator", name="tabpfn_val")
+store(None, group="evaluator", name="none")

@@ -82,6 +82,7 @@ class Trainer:
         self.skipped_steps = 0  # updates dropped because of a non-finite gradient
         self.train_time = 0.0  # seconds spent training, summed over resumed jobs
         self.stop_requested = False  # set by a signal handler before a time limit
+        self.stop_reason: str | None = None  # name of the signal that asked to stop
         self.last_accuracy = math.nan  # test accuracy of the latest table
 
         self._pending = 0  # tables backpropagated since the last update
@@ -284,6 +285,11 @@ class Trainer:
             remaining = (self.epoch + 1) * steps_per_epoch - self.step
             stats = self.train_epoch(tables, remaining, logger, checkpointer, log_every)
             if self.stop_requested:
+                if logger is not None:
+                    # Flush the partial window; progress/epoch is the number of
+                    # finished epochs, so the interrupted one is epoch + 1.
+                    stop = {"event": "stopped", "signal": self.stop_reason}
+                    logger.log(self.window_metrics() | stop, step=self.step)
                 if checkpointer is not None:
                     checkpointer.save(self)
                 print(f"Stopped at step {self.step}; resume from the checkpoint.")
