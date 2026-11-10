@@ -96,10 +96,10 @@ class OpenMLDataset(IterableDataset[TableSample]):
     def load(self, dataset_id: int) -> TableSample:
         X_df, y_series = self._load_dataset(dataset_id)
 
-        X = encode_categoricals(X_df)
-        codes, _ = pd.factorize(y_series)
-        if (codes < 0).any():
-            raise ValueError(f"Dataset {dataset_id}: target has missing labels")
+        # Rows without a label can't be trained on or scored, so drop them.
+        labeled = y_series.notna().to_numpy()
+        X = encode_categoricals(X_df[labeled])
+        codes, _ = pd.factorize(y_series[labeled])
         y = torch.tensor(codes, dtype=torch.long)
 
         n_rows = len(X)
