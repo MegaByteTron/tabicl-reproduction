@@ -109,6 +109,26 @@ Run commands from the repo root. The image finds our code through a relative
 Without the container shell, `cluster/debug.sbatch` is a plain `sbatch` fallback
 (`mkdir -p logs && sbatch cluster/debug.sbatch model=small`).
 
+### One command: `bin/slurm-agent`
+
+Instead of the two steps above, run this from the repo root on the cluster:
+
+```bash
+bin/slurm-agent scripts/train.py model=small cfg/job=gpu_2h
+```
+
+It starts a short allocation on `gpu-teaching-9m`, opens the container there and
+submits the job. It only runs **committed and pushed** code: each commit gets
+its own checkout under `.worktrees/<sha>` (delete old ones with
+`rm -rf .worktrees/<sha> && git worktree prune`), so you can keep editing while
+jobs run. Run outputs go to `outputs/<timestamp>-<sha>`. Settings via
+environment variables: `REF=<branch|sha>`, `IMAGE=oras://...:<tag>-sif`,
+`CPU_PART=<partition>`. From your laptop, `HOST=<cluster> bin/slurm-agent ...`
+does the same over ssh (the checkout must be at the same path under `$HOME`).
+
+Despite its name, this is a plain shell script: type it yourself. Never let a
+coding agent run it.
+
 ## Test order
 
 Do these in order; do not skip ahead.
