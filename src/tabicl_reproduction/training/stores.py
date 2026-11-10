@@ -6,8 +6,8 @@ single values with `key=value` (optimizer.lr=1e-3, epochs=20).
 
 from hydra_zen import MISSING, builds, store
 
-import tabicl_reproduction.training.jobs  # noqa: F401  (registers cfg/job presets)
 from tabicl_reproduction.training import configs
+from tabicl_reproduction.training.evaluate import main as evaluate_main
 from tabicl_reproduction.training.train import main
 
 MainConfig = builds(
@@ -28,6 +28,26 @@ store(
         {"optimizer": "adamw_sf"},
         {"scheduler": "constant"},
         {"data": "prior"},
+        {"evaluator": "tabpfn_val"},
+    ],
+)
+
+# scripts/evaluate.py selects this root with `-cn eval_root`; it reuses the
+# model and evaluator groups below, so `model=small` means the same in both.
+EvalConfig = builds(
+    evaluate_main,
+    cfg=MISSING,
+    populate_full_signature=True,
+)
+store(
+    EvalConfig,
+    name="eval_root",
+    hydra_defaults=[
+        "_self_",
+        {"cfg": "base"},
+        {"cfg/wandb": None},
+        {"cfg/job": None},
+        {"model": "small"},
         {"evaluator": "tabpfn_val"},
     ],
 )

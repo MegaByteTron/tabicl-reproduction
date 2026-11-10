@@ -27,8 +27,9 @@ def _slurm(partition: str, cpus: int, hours: int | None = None, **extra):
 # own. submitit lets `time_hours` (an int) override `timeout_min`, which is why
 # sub-hour partitions set only `timeout_min`. Long presets set both to the same
 # limit so the two never disagree.
-_SHORT = {"test": ("gpu-test", 15), "gpu_9m": ("gpu-9m", 9)}
-_LONG = {"gpu_2h": ("gpu-2h", 2), "gpu_5h": ("gpu-5h", 5)}
+# Students may only use the GPU-TEACHING-* partitions (2D, 2H, 5H, 7D, 9M).
+_SHORT = {"test": ("gpu-teaching-9m", 9)}
+_LONG = {"gpu_2h": ("gpu-teaching-2h", 2), "gpu_5h": ("gpu-teaching-5h", 5)}
 
 PRESETS = {
     **{

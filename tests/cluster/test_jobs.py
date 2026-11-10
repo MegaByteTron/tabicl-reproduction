@@ -8,15 +8,14 @@ import pytest
 from hydra_zen import store
 from omegaconf import OmegaConf
 
-import tabicl_reproduction.training.jobs  # noqa: F401  (registers the presets)
+import tabicl_reproduction.cluster.jobs  # noqa: F401  (registers the presets)
 
 # preset -> (partition, limit in minutes)
 LIMITS = {
-    "test": ("gpu-test", 15),
-    "gpu_9m": ("gpu-9m", 9),
-    "gpu_2h": ("gpu-2h", 120),
-    "gpu_5h": ("gpu-5h", 300),
-    "sweep": ("gpu-2h", 120),
+    "test": ("gpu-teaching-9m", 9),
+    "gpu_2h": ("gpu-teaching-2h", 120),
+    "gpu_5h": ("gpu-teaching-5h", 300),
+    "sweep": ("gpu-teaching-2h", 120),
 }
 
 

@@ -27,20 +27,21 @@ Run locally first: see
 
 | Preset (`cfg/job=`) | Partition | Limit | GPU | CPUs |
 |---|---|---|---|---|
-| `test` | gpu-test | 15 min (1 running job per user) | any | 4 |
-| `gpu_9m` | gpu-9m | 9 min | any | 4 |
-| `gpu_2h` | gpu-2h | 2 h | 40/80 GB, H100, H200 | 8 |
-| `gpu_5h` | gpu-5h | 5 h | 40/80 GB, H100, H200 | 8 |
-| `sweep` | gpu-2h | 2 h per worker | 40/80 GB, H100, H200 | 8 |
+| `test` | gpu-teaching-9m | 9 min | any | 4 |
+| `gpu_2h` | gpu-teaching-2h | 2 h | 40/80 GB, H100, H200 | 8 |
+| `gpu_5h` | gpu-teaching-5h | 5 h | 40/80 GB, H100, H200 | 8 |
+| `sweep` | gpu-teaching-2h | 2 h per worker | 40/80 GB, H100, H200 | 8 |
 
-The cluster also has gpu-2d and gpu-7d. There is no preset for them on purpose:
+Students may only use the GPU-TEACHING partitions (2D, 2H, 5H, 7D, 9M); never
+submit to the other gpu-* partitions. There is no preset for gpu-teaching-2d
+and gpu-teaching-7d on purpose:
 queue times are long and a crash loses days.
 
 How to choose:
 
 - Pick the shortest partition that fits. Short jobs start sooner.
 - Always try new code on `test` first.
-- Long training is a **chain** of `gpu-2h` / `gpu-5h` jobs. Each job saves a
+- Long training is a **chain** of `gpu-teaching-2h` / `gpu-teaching-5h` jobs. Each job saves a
   checkpoint before its time runs out; start the next one with
   `resume=<old run dir>` (the `outputs/...` folder printed when the first job was
   submitted).
@@ -98,11 +99,12 @@ The first run downloads the image and can take a few minutes. From this shell
 submit a job:
 
 ```bash
-python src/tabicl_reproduction/training/train.py model=small cfg/job=gpu_2h
+python scripts/train.py model=small cfg/job=gpu_2h
 ```
 
 Run commands from the repo root. The image finds our code through a relative
-`PYTHONPATH=src`.
+`PYTHONPATH=src`. Evaluation works the same way:
+`python scripts/evaluate.py model=small checkpoint=<run dir> cfg/job=gpu_2h`.
 
 Without the container shell, `cluster/debug.sbatch` is a plain `sbatch` fallback
 (`mkdir -p logs && sbatch cluster/debug.sbatch model=small`).
@@ -114,21 +116,21 @@ Do these in order; do not skip ahead.
 1. **Import check** (finishes in about a minute):
 
    ```bash
-   python src/tabicl_reproduction/training/train.py cfg/job=test \
+   python scripts/train.py cfg/job=test \
      model=tiny '~evaluator' epochs=1 steps_per_epoch=2
    ```
 
    `~evaluator` skips the benchmark evaluation. The log must show the config,
    `"device": "cuda"` in the run folder's `run.json`, and no import errors.
-2. **Time-limit test**: start a run that is too long for the 15 minutes of
-   `gpu-test`, so SLURM has to stop it:
+2. **Time-limit test**: start a run that is too long for the 9 minutes of
+   `gpu-teaching-9m`, so SLURM has to stop it:
 
    ```bash
-   python src/tabicl_reproduction/training/train.py cfg/job=test \
+   python scripts/train.py cfg/job=test \
      model=small '~evaluator' epochs=1000 steps_per_epoch=20 checkpoint_every_min=2
    ```
 
-   Shortly before 15 minutes the log must show `Received SIGUSR2, stopping after
+   Shortly before 9 minutes the log must show `Received SIGUSR2, stopping after
    this step.` and `Stopped at step ...`, and the run folder must contain
    `last.pt`. If the log ends without these lines, the signal did not reach the
    training process: `last.pt` is then only as recent as the last 2-minute save.
@@ -159,7 +161,7 @@ training outputs are in the same run folder; live curves are on W&B.
   Resume it with `resume=<old run dir>` or pick a longer partition.
 - **`ModuleNotFoundError: tabicl_reproduction`.** You started from the wrong
   folder. `cd` to the repo root and use the path
-  `src/tabicl_reproduction/training/train.py`.
+  `scripts/train.py`.
 - **A new dependency is missing.** The image only contains what was in
   `pyproject.toml` when the tag was built. Update, push a new tag, wait for the
   workflow, then run again (add `JOB_IMAGE=oras://...:<tag>-sif` to use a specific

@@ -30,6 +30,8 @@ dist/
 # ML experiments
 checkpoints/
 outputs/
+# W&B run files (written next to the code, offline runs included)
+wandb/
 
 # Model artifacts
 *.pt
