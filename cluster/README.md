@@ -150,10 +150,18 @@ Do these in order; do not skip ahead.
      model=small '~evaluator' epochs=1000 steps_per_epoch=20 checkpoint_every_min=2
    ```
 
-   Shortly before 9 minutes the log must show `Received SIGUSR2, stopping after
-   this step.` and `Stopped at step ...`, and the run folder must contain
-   `last.pt`. If the log ends without these lines, the signal did not reach the
-   training process: `last.pt` is then only as recent as the last 2-minute save.
+   SLURM sends SIGUSR2 to submitit's process, which passes it on to the
+   training and waits until it has saved. Near the end, the job's
+   `<jobid>_0_log.out` (in the submission folder) must show, in this order,
+   `Time limit: asking the training to stop and save.`,
+   `Received SIGUSR2, stopping after this step.` and `Stopped at step ...`.
+   `<jobid>_0_log.err` then says `Job not requeued because: checkpoint function
+   returned None.` That is expected: the job ends after the save and you resume
+   by hand. In the training run folder (`outputs/runs/...`), `run.json` must
+   have `"status": "stopped"` and `"signal": "SIGUSR2"`, the last
+   `metrics.jsonl` row `"event": "stopped"`, and `last.pt` must exist. If these
+   are missing, the training was killed before it could save: `last.pt` is then
+   only as recent as the last epoch or 2-minute save.
    Then continue the run with `resume=<that run folder>` and check that the log
    says `Resumed from ... at step ...`.
 3. **Short sweep** with `cfg/job=sweep`; check in W&B that both workers report

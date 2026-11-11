@@ -4,11 +4,18 @@ Instantiating a Job submits it to SLURM and exits the process, so these tests
 only look at the stored configs.
 """
 
+import os
+import pickle
+import signal
+import sys
+import threading
+import time
+
 import pytest
 from hydra_zen import store
 from omegaconf import OmegaConf
 
-import tabicl_reproduction.cluster.jobs  # noqa: F401  (registers the presets)
+from tabicl_reproduction.cluster.jobs import StoppableCommand
 
 # preset -> (partition, limit in minutes)
 LIMITS = {
@@ -55,3 +62,62 @@ def test_sweep_settings():
     assert cfg.metric_name == "eval/log_loss"
     assert cfg.metric_goal == "minimize"
     assert cfg.parameters == {"optimizer.lr": [1e-3, 4e-3]}
+
+
+@pytest.mark.parametrize("name", ["test", "gpu_2h", "gpu_5h"])
+def test_training_presets_use_the_stoppable_job(name):
+    assert load(name)._target_.endswith(".StoppableJob")
+
+
+# A stand-in for the training: on SIGUSR2 it finishes its step, then saves.
+TRAINING = """
+import pathlib, signal, sys, time
+ready, saved = map(pathlib.Path, sys.argv[1:])
+stop = False
+def request_stop(*_):
+    global stop
+    stop = True
+signal.signal(signal.SIGUSR2, request_stop)
+ready.touch()
+while not stop:
+    time.sleep(0.05)
+time.sleep(0.5)  # finish the current step
+saved.touch()
+"""
+
+
+def test_time_limit_signal_waits_until_the_training_saved(tmp_path):
+    ready, saved = tmp_path / "ready", tmp_path / "saved"
+    command = StoppableCommand([sys.executable, "-c", TRAINING, str(ready), str(saved)])
+    saved_when_checkpoint_returned = []
+
+    # Like submitit: SIGUSR2 to this process calls checkpoint(), and the job
+    # ends as soon as checkpoint() returns.
+    def on_signal(*_):
+        command.checkpoint()
+        saved_when_checkpoint_returned.append(saved.exists())
+
+    def send_time_limit_signal():
+        while not ready.exists():
+            time.sleep(0.05)
+        os.kill(os.getpid(), signal.SIGUSR2)
+
+    previous = signal.signal(signal.SIGUSR2, on_signal)
+    try:
+        threading.Thread(target=send_time_limit_signal, daemon=True).start()
+        assert command() == 0
+    finally:
+        signal.signal(signal.SIGUSR2, previous)
+    assert saved_when_checkpoint_returned == [True]
+
+
+def test_failing_training_fails_the_job():
+    command = StoppableCommand([sys.executable, "-c", "raise SystemExit(3)"])
+    with pytest.raises(RuntimeError, match="code 3"):
+        command()
+
+
+def test_command_can_be_pickled_for_submission():
+    # submitit pickles the function before the job starts.
+    command = StoppableCommand(["python", "scripts/train.py"])
+    assert pickle.loads(pickle.dumps(command)).command == command.command
