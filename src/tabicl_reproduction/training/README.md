@@ -23,3 +23,5 @@ The run folder (printed as `Writing checkpoints and metrics to ...`, under
 `outputs/`) contains `metrics.jsonl`, `eval_datasets.jsonl`, `run.json`,
 `last.pt`, `best.pt` and `model.pt`. Read the metrics with
 `pandas.read_json("<run dir>/metrics.jsonl", lines=True)`.
+
+Every option, with defaults, output files and resume details: [USAGE.md](USAGE.md).
