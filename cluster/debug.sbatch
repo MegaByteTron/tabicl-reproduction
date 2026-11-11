@@ -11,6 +11,7 @@
 # Write everything the job prints to logs/<job id>.out (the logs/ folder must exist).
 #SBATCH --output=logs/%j.out
 
-# Start the container (--nv makes the GPU visible inside) and run training;
-# "$@" passes along the Hydra overrides you gave to sbatch.
-apptainer run --nv oras://ghcr.io/megabytetron/tabicl-reproduction:latest-sif python scripts/train.py "$@"
+# Start the container (--nv makes the GPU visible inside, -B mounts the shared
+# datasets folder) and run training; "$@" passes along the Hydra overrides you
+# gave to sbatch.
+apptainer run --nv -B /home/space/datasets oras://ghcr.io/megabytetron/tabicl-reproduction:latest-sif python scripts/train.py "$@"

@@ -91,12 +91,32 @@ checks):
 
 ```bash
 srun --partition=cpu-2h --pty bash
-apptainer run --writable-tmpfs oras://ghcr.io/megabytetron/tabicl-reproduction:latest-sif /bin/bash
+apptainer run --writable-tmpfs -B /home/space/datasets oras://ghcr.io/megabytetron/tabicl-reproduction:latest-sif /bin/bash
 cd tabicl-reproduction
 ```
 
-The first run downloads the image and can take a few minutes. From this shell
-submit a job:
+The first run downloads the image and can take a few minutes. `-B` makes the
+cluster's shared datasets folder visible in the container; apptainer only
+mounts your home by default. Submitted jobs mount it on their own.
+
+### Benchmark data
+
+The OpenML datasets live in `/home/space/datasets/<dataset>`, readable by
+everyone (the code runs the equivalent of `chmod -R a+rX` on each dataset it
+downloads). Download them once from the container shell before the first run
+with an evaluator, so jobs don't spend their time limit downloading:
+
+```bash
+python -c "
+from tabicl_reproduction.data.loader import default_data_dir
+from tabicl_reproduction.data.openml_tables import OpenMLDataset
+from tabicl_reproduction.data.benchmarks import BENCHMARKS
+d = OpenMLDataset(datasets=BENCHMARKS['tabpfn_val'], data_dir=default_data_dir())
+print(d.data_dir, 'failures:', d.download_all())
+"
+```
+
+Datasets already there are skipped. From this shell submit a job:
 
 ```bash
 python scripts/train.py model=small cfg/job=gpu_2h

@@ -16,6 +16,23 @@ from ml_project_template.runs import Job, SlurmParams, SweepJob
 from ml_project_template.utils import get_output_dir, logger
 from submitit import AutoExecutor
 
+from tabicl_reproduction.data.loader import CLUSTER_DATASETS_DIR
+
+
+class MountsDatasets:
+    """Makes the cluster's shared datasets folder visible in the job's container.
+
+    Apptainer only mounts the home directory by default, and
+    /home/space/datasets is not inside it.
+    """
+
+    @property
+    def python_command(self) -> str:
+        command = super().python_command  # type: ignore[misc]
+        return command.replace(
+            "apptainer run", f"apptainer run -B {CLUSTER_DATASETS_DIR}", 1
+        )
+
 
 class StoppableCommand:
     """Runs the training command; on the time-limit signal, lets it save first.
@@ -58,7 +75,7 @@ class StoppableCommand:
 
 
 @dataclass
-class StoppableJob(Job):
+class StoppableJob(MountsDatasets, Job):
     """The template's Job, submitting a StoppableCommand.
 
     run() repeats ml_project_template's Job.run (pinned in pyproject.toml);
@@ -88,6 +105,11 @@ class StoppableJob(Job):
         logger.info(f"Submitted job {job.job_id}")
         if self.wait_for_job:
             logger.info(f"\n{job.result()}")
+
+
+@dataclass
+class DatasetSweepJob(MountsDatasets, SweepJob):
+    """The template's SweepJob, with the shared datasets folder mounted."""
 
 
 IMAGE = "${oc.env:JOB_IMAGE,oras://ghcr.io/megabytetron/tabicl-reproduction:latest-sif}"
@@ -138,7 +160,7 @@ for _name, (_slurm_cfg, _minutes) in PRESETS.items():
 _sweep_slurm, _sweep_minutes = PRESETS["gpu_2h"]
 job_store(
     builds(
-        SweepJob,
+        DatasetSweepJob,
         image=IMAGE,
         slurm_params=_sweep_slurm,
         timeout_min=_sweep_minutes,

@@ -15,7 +15,11 @@ import pytest
 from hydra_zen import store
 from omegaconf import OmegaConf
 
-from tabicl_reproduction.cluster.jobs import StoppableCommand
+from tabicl_reproduction.cluster.jobs import (
+    DatasetSweepJob,
+    StoppableCommand,
+    StoppableJob,
+)
 
 # preset -> (partition, limit in minutes)
 LIMITS = {
@@ -67,6 +71,21 @@ def test_sweep_settings():
 @pytest.mark.parametrize("name", ["test", "gpu_2h", "gpu_5h"])
 def test_training_presets_use_the_stoppable_job(name):
     assert load(name)._target_.endswith(".StoppableJob")
+
+
+def test_sweep_preset_mounts_the_datasets():
+    assert load("sweep")._target_.endswith(".DatasetSweepJob")
+
+
+@pytest.mark.parametrize("job_class", [StoppableJob, DatasetSweepJob])
+def test_job_container_mounts_the_shared_datasets(job_class, monkeypatch):
+    monkeypatch.delenv("JOB_REPO", raising=False)
+    # Creating a Job submits it, so build one without running __post_init__.
+    job = object.__new__(job_class)
+    job.image = "image.sif"
+    command = job.python_command
+    assert command.startswith("apptainer run -B /home/space/datasets ")
+    assert command.endswith("--nv image.sif python")
 
 
 # A stand-in for the training: on SIGUSR2 it finishes its step, then saves.
