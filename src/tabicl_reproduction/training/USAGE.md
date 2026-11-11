@@ -111,8 +111,11 @@ The training tables come from the synthetic prior, an endless stream.
 | `none` | No evaluation. No `eval/*` metrics, and `best.pt` is never written. |
 | `tabpfn_val` | Scores the model on the real `tabpfn_val` OpenML tables after every epoch. Tables with more classes than `max_classes` are skipped. |
 
-The first evaluation downloads the datasets into `.cache/datasets/` (or
-`$TABICL_DATASETS_DIR`), which takes a while.
+The first evaluation downloads the datasets, which takes a while. Each one is
+stored by name, as `<folder>/<name>/features.parquet` and `target.parquet`. The
+folder is `$TABICL_DATASETS_DIR` if set, else `/home/space/datasets/` inside a
+SLURM job (the run stops with an error if that folder isn't mounted), else
+`.cache/datasets/`.
 
 ### `cfg/wandb=` (default off)
 
