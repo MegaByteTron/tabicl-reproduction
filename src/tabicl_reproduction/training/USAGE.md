@@ -140,6 +140,7 @@ Read the logs with pandas:
 
 ```python
 import pandas as pd
+
 metrics = pd.read_json("outputs/<date>/<time>/metrics.jsonl", lines=True)
 datasets = pd.read_json("outputs/<date>/<time>/eval_datasets.jsonl", lines=True)
 ```
