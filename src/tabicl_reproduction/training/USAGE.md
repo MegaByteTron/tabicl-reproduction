@@ -113,8 +113,8 @@ The training tables come from the synthetic prior, an endless stream.
 
 The first evaluation downloads the datasets, which takes a while. Each one is
 stored by name, as `<folder>/<name>/features.parquet` and `target.parquet`. The
-folder is `$TABICL_DATASETS_DIR` if set, else `/home/space/datasets/` inside a
-SLURM job (the run stops with an error if that folder isn't mounted), else
+folder is `$TABICL_DATASETS_DIR` if set, else
+`~/.cache/tabicl-reproduction/datasets/` inside a SLURM job, else
 `.cache/datasets/`.
 
 ### `cfg/wandb=` (default off)

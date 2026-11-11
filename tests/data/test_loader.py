@@ -1,4 +1,5 @@
 import pickle
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -97,10 +98,9 @@ def test_default_data_dir_local(monkeypatch, tmp_path):
 def test_default_data_dir_cluster(monkeypatch, tmp_path):
     monkeypatch.delenv("TABICL_DATASETS_DIR", raising=False)
     monkeypatch.setenv("SLURM_JOB_ID", "123")
-    monkeypatch.setattr(loader_module, "CLUSTER_DATASETS_DIR", tmp_path)
-    assert default_data_dir() == tmp_path
+    assert default_data_dir() == loader_module.CLUSTER_DATASETS_DIR
 
-    # In a job but the shared folder isn't mounted: fail instead of using .cache.
-    monkeypatch.setattr(loader_module, "CLUSTER_DATASETS_DIR", tmp_path / "missing")
-    with pytest.raises(FileNotFoundError, match="not visible"):
-        default_data_dir()
+
+def test_cluster_data_dir_is_in_the_home_directory():
+    # The home directory is mounted in every job's container.
+    assert loader_module.CLUSTER_DATASETS_DIR.is_relative_to(Path.home())

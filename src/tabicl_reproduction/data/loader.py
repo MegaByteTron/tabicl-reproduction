@@ -12,7 +12,10 @@ from .preprocessing import Size
 from .synthetic import PriorDataset
 from .table import TableSample
 
-CLUSTER_DATASETS_DIR = Path("/home/space/datasets")
+# On the cluster: a folder in the home directory, which every job's container
+# can see. Not /home/space/datasets: that is the cluster-wide shared store,
+# and it isn't mounted in our containers.
+CLUSTER_DATASETS_DIR = Path.home() / ".cache" / "tabicl-reproduction" / "datasets"
 LOCAL_DATASETS_DIR = Path(".cache/datasets")
 
 
@@ -27,23 +30,15 @@ def on_cluster() -> bool:
 def default_data_dir() -> Path:
     """Folder that holds every OpenML dataset, each in <folder>/<name>.
 
-    $TABICL_DATASETS_DIR if set, otherwise /home/space/datasets in a SLURM
-    job, otherwise .cache/datasets.
+    $TABICL_DATASETS_DIR if set, otherwise ~/.cache/tabicl-reproduction/datasets
+    in a SLURM job, otherwise .cache/datasets (relative to the repo). The
+    cluster folder is outside the repo so that jobs started from different
+    checkouts (bin/slurm-agent worktrees) share one download.
     """
     root = os.environ.get("TABICL_DATASETS_DIR")
     if root is not None:
         return Path(root)
-    if not on_cluster():
-        return LOCAL_DATASETS_DIR
-    # Fail loudly: falling back to .cache would download into the job's
-    # per-commit worktree instead of the shared folder.
-    if not CLUSTER_DATASETS_DIR.is_dir():
-        raise FileNotFoundError(
-            f"In a SLURM job but {CLUSTER_DATASETS_DIR} is not visible. Bind it "
-            f"into the container (-B {CLUSTER_DATASETS_DIR}) or set "
-            "TABICL_DATASETS_DIR."
-        )
-    return CLUSTER_DATASETS_DIR
+    return CLUSTER_DATASETS_DIR if on_cluster() else LOCAL_DATASETS_DIR
 
 
 type Transformation = Callable[[TableSample], TableSample]
