@@ -10,7 +10,8 @@ env:
 
 jobs:
   build-and-push:
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest became 26.04, where the apptainer .deb cannot install.
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
