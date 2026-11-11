@@ -5,7 +5,6 @@ import schedulefree
 import torch
 from torch import nn
 
-from tabicl_reproduction.data import to_model_inputs
 from tabicl_reproduction.training import Trainer
 from tabicl_reproduction.training.optim import constant_schedule
 
@@ -41,7 +40,8 @@ def test_accumulation_averages_gradients(make_trainer, make_sample):
     per_table = []
     for sample in samples:
         reference.model.zero_grad()
-        logits = reference.model(*to_model_inputs(sample))[0]
+        X_train, y_train, X_test, _ = (t.unsqueeze(0) for t in sample)
+        logits = reference.model(torch.cat([X_train, X_test], dim=1), y_train)[0]
         reference.criterion(logits, sample.y_test).backward()
         per_table.append([p.grad.clone() for p in reference.model.parameters()])
 
@@ -106,6 +106,24 @@ def test_stop_request_ends_epoch_after_a_full_step(make_trainer, tables):
 
     status = trainer.fit(tables(), n_epochs=1, steps_per_epoch=5)
     assert status == "stopped" and trainer.epoch == 0
+
+
+def test_stop_logs_a_final_row(make_trainer, tables):
+    class Rows:
+        def __init__(self):
+            self.rows = []
+
+        def log(self, metrics, step):
+            self.rows.append(metrics | {"step": step})
+
+    trainer = make_trainer(accum_steps=2)
+    trainer.stop_requested, trainer.stop_reason = True, "SIGINT"
+    logger = Rows()
+    trainer.fit(tables(), n_epochs=1, steps_per_epoch=5, logger=logger)
+
+    last = logger.rows[-1]
+    assert last["event"] == "stopped" and last["signal"] == "SIGINT"
+    assert last["progress/epoch"] == 0 and last["step"] == trainer.step
 
 
 def test_inference_switches_schedule_free_weights(make_sample):

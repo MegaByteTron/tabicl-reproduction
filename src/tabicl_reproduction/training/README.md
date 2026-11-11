@@ -3,12 +3,12 @@
 Run from the repo root on your laptop. No SLURM, no W&B.
 
 ```bash
-# Smoke test (seconds): tiny model, no benchmark evaluation
+# Smoke test (seconds): tiny model, no benchmark evaluation (the default)
 uv run python scripts/train.py \
-  model=tiny '~evaluator' epochs=2 steps_per_epoch=3
+  model=tiny epochs=2 steps_per_epoch=3
 
 # A real local run: small model, evaluation on tabpfn_val after every epoch
-uv run python scripts/train.py model=small epochs=5
+uv run python scripts/train.py model=small evaluator=tabpfn_val epochs=5
 
 # Other choices
 uv run python scripts/train.py \
@@ -16,13 +16,15 @@ uv run python scripts/train.py \
 
 # Continue a run from its folder
 uv run python scripts/train.py \
-  model=tiny '~evaluator' epochs=4 steps_per_epoch=3 resume=<run dir>
+  model=tiny epochs=4 steps_per_epoch=3 resume=<run dir>
 ```
 
 The run folder (printed as `Writing checkpoints and metrics to ...`, under
 `outputs/`) contains `metrics.jsonl`, `eval_datasets.jsonl`, `run.json`,
 `last.pt`, `best.pt` and `model.pt`. Read the metrics with
 `pandas.read_json("<run dir>/metrics.jsonl", lines=True)`.
+
+Every option, with defaults, output files and resume details: [USAGE.md](USAGE.md).
 
 ## Evaluation
 

@@ -7,6 +7,7 @@ Resume:       ... resume=<old run dir>
 """
 
 import random
+import time
 from collections.abc import Callable, Iterable
 from pathlib import Path
 
@@ -90,7 +91,7 @@ def main(
     )
     print(f"Writing checkpoints and metrics to {out_dir_path}")
 
-    trainer.fit(
+    status = trainer.fit(
         data,
         n_epochs=epochs,
         steps_per_epoch=steps_per_epoch,
@@ -98,6 +99,13 @@ def main(
         logger=logger,
         checkpointer=checkpointer,
         log_every=log_every,
+    )
+    logger.update_run_info(
+        end_time=time.strftime("%Y-%m-%d %H:%M:%S"),
+        status=status,
+        step=trainer.step,
+        epoch=trainer.epoch,
+        signal=trainer.stop_reason,
     )
     return trainer
 

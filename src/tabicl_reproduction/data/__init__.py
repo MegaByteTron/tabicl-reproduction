@@ -2,7 +2,7 @@ from .benchmarks import BENCHMARKS, TABPFN_VAL_DATASETS
 from .loader import load_data
 from .openml_tables import OpenMLDataset
 from .synthetic import PriorDataset
-from .table import TableSample, to_model_inputs
+from .table import TableSample
 
 __all__ = [
     "BENCHMARKS",
@@ -11,5 +11,4 @@ __all__ = [
     "PriorDataset",
     "TableSample",
     "load_data",
-    "to_model_inputs",
 ]

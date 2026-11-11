@@ -51,7 +51,8 @@ def test_cli_run_writes_metrics_checkpoints_and_config(tmp_path):
     assert {"train/loss", "time/data", "epoch/loss"} <= set(metrics.columns)
     assert (tmp_path / "last.pt").exists() and (tmp_path / "model.pt").exists()
     assert (tmp_path / ".hydra" / "config.yaml").exists()
-    assert json.loads((tmp_path / "run.json").read_text())["seed"] == 0
+    info = json.loads((tmp_path / "run.json").read_text())
+    assert info["seed"] == 0 and info["status"] == "finished" and info["epoch"] == 2
 
 
 def test_cli_resume(tmp_path):
