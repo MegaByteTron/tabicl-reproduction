@@ -13,7 +13,7 @@ from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 from tqdm import tqdm
 
-from tabicl_reproduction.data import TableSample, to_model_inputs
+from tabicl_reproduction.data import TableSample
 from tabicl_reproduction.model import NanoTabICLv2
 
 
@@ -131,14 +131,18 @@ class Trainer:
         loss, or None if the table had nothing to learn from.
         """
         start = time.perf_counter()
-        x, y = to_model_inputs(batch)
-        target = batch.y_test.to(self.device)
+        # The model takes a batch of tables; ours is a batch of one.
+        X_train, y_train, X_test, y_test = (t.unsqueeze(0) for t in batch)
+        X_train_test = torch.cat([X_train, X_test], dim=1)
+        target = y_test[0].to(self.device)
         valid = target >= 0  # -1 marks a test class that never occurs in training
         loss_value = None
 
         if valid.any():
             with self._autocast():
-                logits = self.model(x.to(self.device), y.to(self.device))[0]
+                logits = self.model(
+                    X_train_test.to(self.device), y_train.to(self.device)
+                )[0]
             loss = self.criterion(logits.float(), target)
             if torch.isfinite(loss):
                 (loss / self.accum_steps).backward()
@@ -154,8 +158,8 @@ class Trainer:
         self._pending += 1
         self._record(
             tables=1,
-            n_features=x.shape[-1],
-            n_rows=x.shape[-2],
+            n_features=X_train_test.shape[-1],
+            n_rows=X_train_test.shape[-2],
             n_classes=int(batch.y_train.max()) + 1,
         )
         if self._pending == self.accum_steps:

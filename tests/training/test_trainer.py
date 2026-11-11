@@ -5,7 +5,6 @@ import schedulefree
 import torch
 from torch import nn
 
-from tabicl_reproduction.data import to_model_inputs
 from tabicl_reproduction.training import Trainer
 from tabicl_reproduction.training.optim import constant_schedule
 
@@ -41,7 +40,8 @@ def test_accumulation_averages_gradients(make_trainer, make_sample):
     per_table = []
     for sample in samples:
         reference.model.zero_grad()
-        logits = reference.model(*to_model_inputs(sample))[0]
+        X_train, y_train, X_test, _ = (t.unsqueeze(0) for t in sample)
+        logits = reference.model(torch.cat([X_train, X_test], dim=1), y_train)[0]
         reference.criterion(logits, sample.y_test).backward()
         per_table.append([p.grad.clone() for p in reference.model.parameters()])
 

@@ -3,8 +3,6 @@ import pandas as pd
 import pytest
 import torch
 
-from tabicl_reproduction.data import to_model_inputs
-
 
 @pytest.fixture
 def cached_dataset(tmp_path):
@@ -47,9 +45,10 @@ def run_model(model):
     """Run a sample through the model and assert the output is valid."""
 
     def run(sample):
-        x, y = to_model_inputs(sample)
+        X_train, y_train, X_test, _ = (t.unsqueeze(0) for t in sample)
+        x = torch.cat([X_train, X_test], dim=1)
         with torch.no_grad():
-            out = model(x, y)
+            out = model(x, y_train)
         assert out.shape == (1, len(sample.X_test), 10)
         assert torch.isfinite(out).all()
 

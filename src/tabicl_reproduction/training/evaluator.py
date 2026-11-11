@@ -8,7 +8,7 @@ import torch
 from sklearn.metrics import balanced_accuracy_score, roc_auc_score
 from torch import nn
 
-from tabicl_reproduction.data import TableSample, load_data, to_model_inputs
+from tabicl_reproduction.data import TableSample, load_data
 
 SUMMARY_METRICS = ("accuracy", "balanced_accuracy", "log_loss", "roc_auc", "ece")
 
@@ -66,8 +66,10 @@ class Evaluator:
             return None
 
         start = time.perf_counter()
-        x, y = to_model_inputs(sample)
-        logits = self.model(x.to(self.device), y.to(self.device))[0]
+        # The model takes a batch of tables; ours is a batch of one.
+        X_train, y_train, X_test, _ = (t.unsqueeze(0) for t in sample)
+        X_train_test = torch.cat([X_train, X_test], dim=1)
+        logits = self.model(X_train_test.to(self.device), y_train.to(self.device))[0]
         # Only the classes that occur in training can be predicted.
         logits = logits[:, :n_classes].float().cpu()[valid]
         target = sample.y_test[valid]
