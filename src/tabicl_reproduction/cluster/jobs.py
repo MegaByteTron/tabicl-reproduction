@@ -19,7 +19,8 @@ from submitit import AutoExecutor
 from tabicl_reproduction.data.loader import CLUSTER_DATASETS_DIR
 
 
-class ClusterJobMixin:
+@dataclass
+class ClusterJobMixin(Job):
     """Fixes for the template's jobs, shared by our training and sweep jobs.
 
     - Mounts the cluster's shared datasets folder in the job's container:
@@ -31,12 +32,12 @@ class ClusterJobMixin:
     """
 
     def filter_args(self, args: list[str]) -> list[str]:
-        args = super().filter_args(args)  # type: ignore[misc]
+        args = super().filter_args(args)
         return [arg for arg in args if not arg.lstrip("+~").startswith("cfg.job.")]
 
     @property
     def python_command(self) -> str:
-        command = super().python_command  # type: ignore[misc]
+        command = super().python_command
         return command.replace(
             "apptainer run", f"apptainer run -B {CLUSTER_DATASETS_DIR}", 1
         )
@@ -75,15 +76,16 @@ class StoppableCommand:
 
     def checkpoint(self, *args: Any, **kwargs: Any) -> None:
         """Called by submitit on SIGUSR2. Returns None: no automatic requeue."""
-        if self._process is not None and self._process.returncode is None:
+        process, waiter = self._process, self._waiter
+        if process is not None and waiter is not None and process.returncode is None:
             print("Time limit: asking the training to stop and save.", flush=True)
-            self._process.send_signal(signal.SIGUSR2)
-            self._waiter.join(timeout=self.stop_timeout_s)
+            process.send_signal(signal.SIGUSR2)
+            waiter.join(timeout=self.stop_timeout_s)
         return None
 
 
 @dataclass
-class StoppableJob(ClusterJobMixin, Job):
+class StoppableJob(ClusterJobMixin):
     """The template's Job, submitting a StoppableCommand.
 
     run() repeats ml_project_template's Job.run (pinned in pyproject.toml);
