@@ -78,6 +78,27 @@ def test_sweep_preset_mounts_the_datasets():
 
 
 @pytest.mark.parametrize("job_class", [StoppableJob, DatasetSweepJob])
+def test_job_overrides_are_not_passed_to_the_job(job_class):
+    # The job's own run has no cfg.job, so Hydra rejects any cfg.job override.
+    job = object.__new__(job_class)
+    args = [
+        "scripts/train.py",
+        "cfg/job=test",
+        "cfg.job.slurm_params.cpus_per_task=8",
+        "+cfg.job.timeout_min=5",
+        "cfg/wandb=base",
+        "cfg.wandb.mode=offline",
+        "model=small",
+    ]
+    assert job.filter_args(args) == [
+        "scripts/train.py",
+        "cfg/wandb=base",
+        "cfg.wandb.mode=offline",
+        "model=small",
+    ]
+
+
+@pytest.mark.parametrize("job_class", [StoppableJob, DatasetSweepJob])
 def test_job_container_mounts_the_shared_datasets(job_class, monkeypatch):
     monkeypatch.delenv("JOB_REPO", raising=False)
     # Creating a Job submits it, so build one without running __post_init__.

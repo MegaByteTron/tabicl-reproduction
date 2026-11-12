@@ -19,12 +19,20 @@ from submitit import AutoExecutor
 from tabicl_reproduction.data.loader import CLUSTER_DATASETS_DIR
 
 
-class MountsDatasets:
-    """Makes the cluster's shared datasets folder visible in the job's container.
+class ClusterJobMixin:
+    """Fixes for the template's jobs, shared by our training and sweep jobs.
 
-    Apptainer only mounts the home directory by default, and
-    /home/space/datasets is not inside it.
+    - Mounts the cluster's shared datasets folder in the job's container:
+      apptainer only mounts the home directory by default, and
+      /home/space/datasets is not inside it.
+    - Drops `cfg.job.<key>=...` overrides (e.g. a different CPU count) from
+      the command the job runs. The template drops only `cfg/job=...`, but
+      the job's own run has no cfg.job, so Hydra would reject them.
     """
+
+    def filter_args(self, args: list[str]) -> list[str]:
+        args = super().filter_args(args)  # type: ignore[misc]
+        return [arg for arg in args if not arg.lstrip("+~").startswith("cfg.job.")]
 
     @property
     def python_command(self) -> str:
@@ -75,7 +83,7 @@ class StoppableCommand:
 
 
 @dataclass
-class StoppableJob(MountsDatasets, Job):
+class StoppableJob(ClusterJobMixin, Job):
     """The template's Job, submitting a StoppableCommand.
 
     run() repeats ml_project_template's Job.run (pinned in pyproject.toml);
@@ -108,7 +116,7 @@ class StoppableJob(MountsDatasets, Job):
 
 
 @dataclass
-class DatasetSweepJob(MountsDatasets, SweepJob):
+class DatasetSweepJob(ClusterJobMixin, SweepJob):
     """The template's SweepJob, with the shared datasets folder mounted."""
 
 

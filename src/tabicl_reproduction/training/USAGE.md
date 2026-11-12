@@ -126,7 +126,9 @@ SLURM job (the run stops with an error if that folder isn't mounted), else
 ### `cfg/job=` (default off)
 
 `cfg/job=<preset>` submits the same command to the SLURM cluster instead of
-running it locally. Presets: `test`, `gpu_2h`, `gpu_5h`, `sweep`. See
+running it locally. Presets: `test`, `gpu_2h`, `gpu_5h`, `sweep`. Change a
+preset's resources with `cfg.job.<key>=...`, for example
+`cfg.job.slurm_params.cpus_per_task=8`. See
 [cluster/README.md](../../../cluster/README.md) for what they mean and how to
 run on the cluster.
 
