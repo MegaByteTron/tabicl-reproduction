@@ -123,6 +123,12 @@ SLURM job (the run stops with an error if that folder isn't mounted), else
 `WANDB_API_KEY`, `WANDB_ENTITY` and `WANDB_PROJECT` from the environment or a
 `.env` file). Options: `cfg.wandb.mode=online|offline`, `cfg.wandb.group=...`.
 
+When the run ends, finished or stopped, the run's files are uploaded too:
+`run.json`, `metrics.jsonl` and `eval_datasets.jsonl` to the run's **Files**
+tab (next to the config), and `best.pt` and `model.pt` to a model artifact,
+`model-<run id>`, in its **Artifacts** tab. `last.pt` stays on disk only.
+Download a model with `wandb artifact get <entity>/<project>/model-<run id>:latest`.
+
 ### `cfg/job=` (default off)
 
 `cfg/job=<preset>` submits the same command to the SLURM cluster instead of

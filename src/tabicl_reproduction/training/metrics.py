@@ -9,6 +9,11 @@ from typing import Any
 import torch
 import wandb
 
+# Uploaded to W&B at the end of a run (see MetricsLogger.upload_to_wandb).
+# The template already uploads the config (.hydra/*) when the run starts.
+RUN_FILES = ("run.json", "metrics.jsonl", "eval_datasets.jsonl")
+MODEL_FILES = ("best.pt", "model.pt")
+
 
 class MetricsLogger:
     """Appends metrics to JSON-lines files in the run directory.
@@ -57,7 +62,38 @@ class MetricsLogger:
             wandb.run.summary.update(
                 {f"run/{key}": value for key, value in extra.items()}
             )
+            try:
+                self.upload_to_wandb(wandb.run, **extra)
+            except Exception as error:  # never lose the run over an upload
+                print(f"W&B upload failed: {error}", flush=True)
             wandb.finish()
+
+    def upload_to_wandb(self, run: Any, **metadata: Any) -> None:
+        """Upload the run's files to W&B.
+
+        - The logs go to the run's Files tab, next to the config.
+        - best.pt and model.pt go to a "model" artifact, model-<run id>, in
+          the Artifacts tab. Download it with `wandb artifact get`.
+
+        last.pt is left out: it is 3x larger (optimizer state) and only
+        needed to resume, which uses the copy on the cluster.
+        """
+        for name in RUN_FILES:
+            if (self.directory / name).exists():
+                run.save(
+                    str(self.directory / name),
+                    base_path=str(self.directory),
+                    policy="now",
+                )
+        models = [self.directory / n for n in MODEL_FILES]
+        models = [path for path in models if path.exists()]
+        if models:
+            artifact = wandb.Artifact(
+                f"model-{run.id}", type="model", metadata=metadata
+            )
+            for path in models:
+                artifact.add_file(str(path))
+            run.log_artifact(artifact)
 
     def write_run_info(self, **extra: Any) -> dict[str, Any]:
         """Write run.json: where and with what this run was trained."""
