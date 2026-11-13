@@ -9,51 +9,36 @@
 \bibliographystyle{abbrvnat}
 \setcitestyle{authoryear}
 
-\title{Project Machine Learning\\--- Milestone 1 ---} 
+\title{Project Machine Learning\\--- Milestone 1 ---}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                     %
 %   EVERYTHING BELOW CAN BE CHANGED   %
 %                                     %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\author{Max Mustermann}
+\author{Max Mustermann}  % TODO: all group members
 \date{\today}
 
-\usepackage{blindtext}
-\usepackage{mflogo}
+\usepackage{xcolor}
+% Links as dark blue text instead of hyperref's default coloured boxes.
+\hypersetup{colorlinks, allcolors=blue!50!black}
+\usepackage{booktabs}    % \toprule, \midrule, \bottomrule in tables
+\usepackage{subcaption}  % subfigures (a), (b) side by side
+\graphicspath{{figures/}}
+
+\input{macros}
 
 \begin{document}
 \maketitle
-\section{Overview}
-\Blindtext
-\section{Feature Extraction}
-\begin{figure}
-\centering
-\includegraphics{figure-1}
-\caption{A figure caption {\em describes} the figure. Explanation and interpretation is provided in the main text.}\label{fig:exmpl_figure}
-\end{figure}
-Matplotlib (\url{https://matplotlib.org/}) allows you to save figures as SVG or PDF which are vector graphics. This is the preferred format for figures. See also \Cref{fig:exmpl_figure} for an example vector graphic\footnote{Footnotes contain additional information that is not necessary for understanding your report. \Cref{fig:exmpl_figure} was created with \MP.}. Figures with many elements are more efficiently saved in PNG format, but don't forget to save them at 300dpi.
 
-\blindmathpaper
-\section{Feature Selection}
-\Blindtext
-\section{Conclusion}
-\begin{table}
-\centering
-\begin{tabular}{r|rrr}
-& Method A & Method B & Method C \\
-\hline
-Condition 1 & 0.78 & \textbf{0.81} & 0.65 \\
-Condition 2 & \textbf{0.50} & 0.43 & 0.44 \\
-Condition 3 & \textbf{0.96} & 0.95 & 0.94
-\end{tabular}
-\caption{This is a table caption. Best method for each condition in bold font.}\label{tab:methods_vs_conditions}
-\end{table}
-\Cref{tab:methods_vs_conditions} shows an example of a table.
-\blindtext
+% One file per section, in sections/, following the task sheet's report part.
+% At most 10 pages, no code.
+\input{sections/01_introduction}
+\input{sections/02_dataset_overview}   % 4 points
+\input{sections/03_baseline_evaluation} % 3 points
+\input{sections/04_discussion}         % 2 points
 
-\paragraph{Some citation examples}
-Without parentheses if in running text: \citet{einstein} could show something. With parentheses if not in running text: \LaTeX\ is very powerful \citep[see][]{latexcompanion,knuthwebsite}.
-
+% Lists every entry of the .bib, cited or not. Remove once the text cites them.
+\nocite{*}
 \bibliography{report_template}
 \end{document}

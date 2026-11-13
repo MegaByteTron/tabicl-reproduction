@@ -8,4 +8,5 @@
 *.fls
 *.fdb_latexmk
 *.synctex.gz
-*.pdf
+# The built report only; figures/*.pdf are tracked
+/*.pdf
