@@ -1,54 +1,20 @@
-"""Shared metrics and one results CSV format for every model.
+"""Shared metrics and one results CSV format for all models.
 
-Baselines, our TabICLv2 model and any later model are scored by the same
-code and saved in the same format, so their results can be loaded together
-and compared fairly.
+    writer = ResultsWriter("results/rf.csv", model="rf")
+    writer.add(table, proba, source="tabpfn_val", table_id="31",
+               split_seed=0, time_s=0.3)
+    writer.skip(table, "one class in training", source="tabpfn_val",
+                table_id="40", split_seed=0)
+    df = load_results("results/*.csv")
 
-Usage:
+proba: probabilities for all test rows, one column per training class.
+Rows labeled -1 are left out. log_loss clips at 1e-15 (at most 34.5 per row).
 
-    from tabicl_reproduction.results import ResultsWriter, load_results
-
-    writer = ResultsWriter("results/random_forest.csv", model="random_forest")
-    for table in tables:
-        proba = ...  # any model, shape [n_test, n_classes]
-        writer.add(table, proba, source="tabpfn_val", table_id="31",
-                   split_seed=0, time_s=elapsed)
-        # if the model could not be fitted on this table:
-        # writer.skip(table, "one class in training", source="tabpfn_val",
-        #             table_id="31", split_seed=0)
-
-    df = load_results("results/*.csv")  # all models in one DataFrame
-
-`proba` holds the predicted probabilities for ALL test rows, one column per
-class seen in training (n_classes = y_train.max() + 1). Test rows labeled -1
-(their class never appears in training) can't be predicted and are left out
-of the metrics; n_test counts only the rows that are scored.
-
-One row per (model, table, split). Each add() or skip() appends its row
-right away, so nothing is lost if a run crashes or hits a time limit.
-
-| Column | Meaning | Example |
-|---|---|---|
-| model | Model name | random_forest |
-| source | Where the table comes from | prior_val, tabpfn_val |
-| table_id | OpenML id or prior table id | 31, prior_0017 |
-| split_seed | Which train/test split | 0 |
-| data_version | Version of the saved prior tables (empty for OpenML) | v1 |
-| checkpoint_step | Training step of the checkpoint (empty for baselines) | 12000 |
-| n_train, n_test, n_features, n_classes | Table size | 800, 200, 20, 2 |
-| accuracy, balanced_accuracy, log_loss, roc_auc, ece | Metrics | 0.74 |
-| time_s | Time for fit and predict on this table | 0.31 |
-| status | ok or skipped | ok |
-| error | Why it was skipped (empty if ok) | one class in training |
-| git_commit | Code version | 827e7f6 |
-
-log_loss clips probabilities at 1e-15, because baselines like random forests
-can give exactly 0 to the true class. One row then adds at most
--log(1e-15) ≈ 34.5. The training loss (cross-entropy on logits) has no such
-cap, so the two differ only for extremely confident wrong predictions.
-
-An undefined metric (ROC AUC when the test rows hold only one class) is NaN.
-A skipped table has empty metric cells, so every model has the same rows.
+Columns (one row per model, table and split; empty cells load as NaN):
+model, source, table_id, split_seed, data_version (prior tables only),
+checkpoint_step (our model only), n_train, n_test, n_features, n_classes,
+accuracy, balanced_accuracy, log_loss, roc_auc, ece, time_s,
+status (ok or skipped), error (why skipped), git_commit.
 """
 
 import csv
