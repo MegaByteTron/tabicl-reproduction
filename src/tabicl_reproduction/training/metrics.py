@@ -10,8 +10,10 @@ import torch
 import wandb
 
 # Uploaded to W&B at the end of a run (see MetricsLogger.upload_to_wandb).
-# The template already uploads the config (.hydra/*) when the run starts.
-RUN_FILES = ("run.json", "metrics.jsonl", "eval_datasets.jsonl")
+# Only what W&B lacks: metrics.jsonl and run.json repeat what wandb.log and
+# the run summary already hold, and the template uploads the config (.hydra/*).
+# W&B gets only the mean eval scores, so the per-dataset scores go as a file.
+RUN_FILES = ("eval_datasets.jsonl",)
 MODEL_FILES = ("best.pt", "model.pt")
 
 
@@ -71,7 +73,7 @@ class MetricsLogger:
     def upload_to_wandb(self, run: Any, **metadata: Any) -> None:
         """Upload the run's files to W&B.
 
-        - The logs go to the run's Files tab, next to the config.
+        - The per-dataset eval scores go to the run's Files tab.
         - best.pt and model.pt go to a "model" artifact, model-<run id>, in
           the Artifacts tab. Download it with `wandb artifact get`.
 
