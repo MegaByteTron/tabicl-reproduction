@@ -169,3 +169,15 @@ def test_window_metrics_keys(make_trainer, tables):
     for key in ["train/loss", "train/lr", "time/data", "time/compute", "prior/n_rows"]:
         assert key in metrics
     assert metrics["progress/tables_seen"] == 2
+
+
+def test_logged_lr_includes_schedule_free_warmup(make_sample):
+    model = tiny_model()
+    optimizer = schedulefree.AdamWScheduleFree(
+        model.parameters(), lr=1e-2, warmup_steps=100
+    )
+    trainer = Trainer(model, optimizer, nn.CrossEntropyLoss(ignore_index=-1), "cpu")
+    optimizer.train()
+    trainer.train_step(make_sample())
+    # Early in the warm-up the real lr is far below the configured 1e-2.
+    assert trainer.window_metrics()["train/lr"] < 1e-3

@@ -202,10 +202,12 @@ class Trainer:
 
         tables = max(w["tables"], 1)
         losses = max(w["losses"], 1)
+        group = self.optimizer.param_groups[0]
         metrics = {
             "train/loss": w["loss"] / losses if w["losses"] else math.nan,
             "train/accuracy": w["accuracy"] / losses if w["losses"] else math.nan,
-            "train/lr": self.optimizer.param_groups[0]["lr"],
+            # Schedule-free keeps the warmed-up lr in "scheduled_lr".
+            "train/lr": group.get("scheduled_lr", group["lr"]),
             "train/grad_norm": w["grad_norm"] / max(w["updates"], 1),
             "train/skipped_steps": self.skipped_steps,
             "train/nonfinite_losses": w["nonfinite_losses"],
@@ -296,6 +298,8 @@ class Trainer:
                     logger.log(self.window_metrics() | stop, step=self.step)
                 if checkpointer is not None:
                     checkpointer.save(self)
+                    # The weights so far, usable even if the run never resumes.
+                    checkpointer.save_model(self)
                 print(f"Stopped at step {self.step}; resume from the checkpoint.")
                 return "stopped"
             self.epoch += 1

@@ -76,7 +76,7 @@ sets the prior's and the evaluator's class limit.
 
 | Preset | What it is | Defaults |
 |---|---|---|
-| `adamw_sf` | AdamW schedule-free | `lr=4e-3`, `betas=[0.9, 0.999]`, `eps=1e-8`, `weight_decay=0.0`, `warmup_steps=0`, `r=0.0`, `weight_lr_power=2.0`, `foreach=true` |
+| `adamw_sf` | AdamW schedule-free | `lr=1e-3`, `betas=[0.9, 0.999]`, `eps=1e-8`, `weight_decay=0.0`, `warmup_steps=200`, `r=0.0`, `weight_lr_power=2.0`, `foreach=true` |
 | `adamw` | `torch.optim.AdamW` | `lr=1e-4`, `betas=[0.9, 0.999]`, `eps=1e-8`, `weight_decay=0.01`, `amsgrad=false` |
 | `muon` | Muon on 2-D weight matrices, AdamW on everything else | `lr=8e-4`, `weight_decay=0.01`, `momentum=0.9`, `betas=[0.9, 0.999]` |
 
@@ -146,7 +146,7 @@ Everything goes to one folder per run, `outputs/<date>/<time>/` (or `out_dir`):
 |---|---|---|
 | `last.pt` | After every epoch, every `checkpoint_every_min` minutes, and on a stop | Full trainer state, used to resume. Overwritten each time. |
 | `best.pt` | After an epoch whose `monitor` value is the best so far | Model weights only. Needs an evaluator. |
-| `model.pt` | Once, when training finishes | Final model weights only. |
+| `model.pt` | When training finishes, and on a stop | Model weights only (the latest ones). |
 | `metrics.jsonl` | Every `log_every` steps, at each epoch end, and on a stop | One JSON row per log call. |
 | `eval_datasets.jsonl` | After every evaluation | One row per dataset (accuracy, balanced accuracy, log loss, ROC AUC, ECE, time). |
 | `run.json` | Written at the start, updated at the end | Commit, seed, device, hostname, `resumed_from`, and `end_time`, `status`, `step`, `epoch`, `signal`. |
