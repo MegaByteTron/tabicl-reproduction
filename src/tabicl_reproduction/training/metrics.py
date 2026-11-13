@@ -43,6 +43,22 @@ class MetricsLogger:
         info = json.loads(path.read_text()) if path.exists() else {}
         path.write_text(json.dumps(info | extra, indent=2))
 
+    def finish(self, **extra: Any) -> None:
+        """Write the final fields to run.json and close the W&B run.
+
+        Closing W&B here, right after the checkpoint is saved, uploads the
+        last rows while the job still has time. Leaving it to W&B's exit hook
+        risks the job being killed first, and W&B then shows the run as
+        crashed. The fields also go to the W&B summary, so W&B shows why a
+        run ended (status "stopped", signal "SIGUSR2").
+        """
+        self.update_run_info(**extra)
+        if wandb.run is not None:
+            wandb.run.summary.update(
+                {f"run/{key}": value for key, value in extra.items()}
+            )
+            wandb.finish()
+
     def write_run_info(self, **extra: Any) -> dict[str, Any]:
         """Write run.json: where and with what this run was trained."""
         cuda = torch.cuda.is_available()

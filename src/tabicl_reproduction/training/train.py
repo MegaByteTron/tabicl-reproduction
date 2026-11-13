@@ -98,7 +98,7 @@ def main(
         checkpointer=checkpointer,
         log_every=log_every,
     )
-    logger.update_run_info(
+    logger.finish(
         end_time=time.strftime("%Y-%m-%d %H:%M:%S"),
         status=status,
         step=trainer.step,
