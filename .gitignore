@@ -30,6 +30,10 @@ dist/
 # ML experiments
 checkpoints/
 outputs/
+# W&B run files (written next to the code, offline runs included)
+wandb/
+# Per-commit checkouts made by bin/slurm-agent
+.worktrees/
 
 # Model artifacts
 *.pt
@@ -45,3 +49,6 @@ notebooks/
 
 # OS
 .DS_Store
+
+# SLURM logs from cluster/debug.sbatch
+logs/

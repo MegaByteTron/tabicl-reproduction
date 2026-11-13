@@ -4,18 +4,18 @@ Run from the repo root on your laptop. No SLURM, no W&B.
 
 ```bash
 # Smoke test (seconds): tiny model, no benchmark evaluation (the default)
-uv run python src/tabicl_reproduction/training/train.py \
+uv run python scripts/train.py \
   model=tiny epochs=2 steps_per_epoch=3
 
 # A real local run: small model, evaluation on tabpfn_val after every epoch
-uv run python src/tabicl_reproduction/training/train.py model=small evaluator=tabpfn_val epochs=5
+uv run python scripts/train.py model=small evaluator=tabpfn_val epochs=5
 
 # Other choices
-uv run python src/tabicl_reproduction/training/train.py \
+uv run python scripts/train.py \
   model=small optimizer=muon scheduler=warmup_cosine
 
 # Continue a run from its folder
-uv run python src/tabicl_reproduction/training/train.py \
+uv run python scripts/train.py \
   model=tiny epochs=4 steps_per_epoch=3 resume=<run dir>
 ```
 
@@ -25,3 +25,15 @@ The run folder (printed as `Writing checkpoints and metrics to ...`, under
 `pandas.read_json("<run dir>/metrics.jsonl", lines=True)`.
 
 Every option, with defaults, output files and resume details: [USAGE.md](USAGE.md).
+
+## Evaluation
+
+Score saved weights on the benchmark, without training. Use the same model
+config as the run (`model=small`); `weights=best` (default) or `weights=model`:
+
+```bash
+uv run python scripts/evaluate.py model=small checkpoint=<run dir>
+```
+
+It writes `eval.json` (summary and one row per dataset) to its own run folder.
+`cfg/job=<preset>` submits it to the cluster like training.

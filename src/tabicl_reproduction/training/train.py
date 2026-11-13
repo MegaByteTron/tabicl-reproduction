@@ -1,6 +1,8 @@
 """Training entry point.
 
-Locally:      python src/tabicl_reproduction/training/train.py model=tiny
+Locally:      python scripts/train.py model=tiny
+On the GPU:   ... cfg/job=gpu_2h          (submits a SLURM job, see cluster/)
+Sweep:        ... cfg/job=sweep
 Resume:       ... resume=<old run dir>
 """
 
@@ -113,10 +115,7 @@ def main(
 
 def cli() -> None:
     # Registering the configs is kept out of import time, as in the template.
+    import tabicl_reproduction.cluster.jobs  # noqa: F401  (cfg/job presets)
     from tabicl_reproduction.training import stores  # noqa: F401
 
     run(main, seed_fn=set_seed)
-
-
-if __name__ == "__main__":
-    cli()

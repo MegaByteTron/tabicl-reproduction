@@ -1,0 +1,5 @@
+# Only pyproject.toml and uv.lock are needed to build the image, so ignore the
+# rest; the code is taken from the checkout at run time.
+*
+!/pyproject.toml
+!/uv.lock
