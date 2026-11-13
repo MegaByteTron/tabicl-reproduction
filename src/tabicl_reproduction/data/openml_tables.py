@@ -31,6 +31,9 @@ class OpenMLDataset(IterableDataset[TableSample]):
     max_train: int | None = 2048
     download: bool = True
     seed: int = 42
+    # Which random train/test split: 0 is the default split, 1 a second,
+    # independent one (TabICLv2 evaluates on two splits per dataset).
+    split_seed: int = 0
 
     def _paths(self, dataset_id: int) -> tuple[Path, Path]:
         directory = self.data_dir / str(dataset_id)
@@ -108,9 +111,10 @@ class OpenMLDataset(IterableDataset[TableSample]):
         n_train, n_test = resolve_split(
             n_rows, self.n_train, self.n_test, self.max_train
         )
-        train_idx, test_idx = split_indices(
-            y, n_train, n_test, seed=self.seed + dataset_id
-        )
+        # 100_000 is above every OpenML id we use, so no two (dataset, split)
+        # pairs share a seed; split_seed=0 keeps the original splits.
+        seed = self.seed + dataset_id + 100_000 * self.split_seed
+        train_idx, test_idx = split_indices(y, n_train, n_test, seed=seed)
         return finalize(
             X[train_idx],
             y[train_idx],

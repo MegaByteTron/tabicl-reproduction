@@ -45,3 +45,7 @@ notebooks/
 
 # OS
 .DS_Store
+
+# Baseline and model results (python -m tabicl_reproduction.baselines)
+/results/
+/results_test/

@@ -121,3 +121,16 @@ def test_download_uses_target_override(tmp_path, monkeypatch):
     target = pd.read_parquet(tmp_path / "7" / "target.parquet")["target"]
     assert list(features.columns) == ["c"]  # the other label "b" is not a feature
     assert target.tolist() == [0, 1, 0, 1]
+
+
+def test_openml_split_seed(cached_dataset):
+    def test_rows(**kwargs):
+        ds = OpenMLDataset((1,), cached_dataset, download=False, **kwargs)
+        return ds.load(1).X_test
+
+    # The second split is a different, reproducible split...
+    assert not torch.equal(test_rows(split_seed=0), test_rows(split_seed=1))
+    assert torch.equal(test_rows(split_seed=1), test_rows(split_seed=1))
+    # ...and split_seed=0 keeps the original split (seed 42 + dataset id).
+    assert torch.equal(test_rows(split_seed=0), test_rows())
+    assert torch.equal(test_rows(split_seed=1), test_rows(seed=42 + 100_000))

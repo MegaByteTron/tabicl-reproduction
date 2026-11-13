@@ -11,7 +11,7 @@ proba: probabilities for all test rows, one column per training class.
 Rows labeled -1 are left out. log_loss clips at 1e-15 (at most 34.5 per row).
 
 Columns (one row per model, table and split; empty cells load as NaN):
-model, source, table_id, split_seed, data_version (prior tables only),
+model, source, table_id (see make_table_id), split_seed, data_version (prior only),
 checkpoint_step (our model only), n_train, n_test, n_features, n_classes,
 accuracy, balanced_accuracy, log_loss, roc_auc, ece, time_s,
 status (ok or skipped), error (why skipped), git_commit.
@@ -249,6 +249,16 @@ def load_results(paths: str | Path | Iterable[str | Path]) -> pd.DataFrame:
             )
         frames.append(df[list(COLUMNS)])
     return pd.concat(frames, ignore_index=True)
+
+
+def make_table_id(source: str, dataset_id: int | None) -> str:
+    """The table_id every model must write: "prior_0017" or an OpenML id "31".
+
+    Results are matched across models by (source, table_id, split_seed).
+    """
+    if dataset_id is None:
+        raise ValueError("The table has no dataset_id")
+    return f"prior_{dataset_id:04d}" if source == "prior_val" else str(dataset_id)
 
 
 def _to_numpy(x) -> np.ndarray:
