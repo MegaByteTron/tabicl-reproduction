@@ -12,8 +12,9 @@ import threading
 import time
 
 import pytest
-from hydra_zen import store
+from hydra_zen import instantiate, store
 from omegaconf import OmegaConf
+from submitit import AutoExecutor
 
 from tabicl_reproduction.cluster.jobs import (
     DatasetSweepJob,
@@ -41,11 +42,28 @@ def test_partition_and_time(name):
     assert cfg.slurm_params.partition == partition
     assert cfg.slurm_params.gpus_per_node == 1
     assert cfg.timeout_min == minutes
-    hours = cfg.slurm_params.time_hours
-    # time_hours overrides timeout_min in submitit, so it must agree if set.
-    assert hours is None or hours * 60 == minutes
-    # Sub-hour partitions cannot be expressed in whole hours.
-    assert (hours is None) == (minutes < 60)
+    # time_hours becomes a "H:00:00" string that breaks submitit's time-limit
+    # handler, so the limit is set through timeout_min only.
+    assert cfg.slurm_params.get("time_hours") is None
+
+
+@pytest.mark.parametrize("name", LIMITS)
+def test_submitit_gets_the_time_limit_as_minutes(name, tmp_path, monkeypatch):
+    # submitit computes with this value when the time-limit signal arrives
+    # (job 5217341 crashed there with "2:00:00"). It needs srun to exist.
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    (fake_bin / "srun").write_text("#!/bin/sh\n")
+    (fake_bin / "srun").chmod(0o755)
+    monkeypatch.setenv("PATH", f"{fake_bin}{os.pathsep}{os.environ['PATH']}")
+
+    cfg = load(name)
+    executor = AutoExecutor(folder=tmp_path / "jobs", cluster="slurm")
+    executor.update_parameters(
+        timeout_min=cfg.timeout_min,
+        **instantiate(cfg.slurm_params).to_submitit_params(),
+    )
+    assert executor._executor.parameters["time"] == LIMITS[name][1]
 
 
 @pytest.mark.parametrize("name", LIMITS)

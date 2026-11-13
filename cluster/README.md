@@ -203,8 +203,13 @@ training outputs are in the same run folder; live curves are on W&B.
 ## Troubleshooting
 
 - **Job dies after 5 minutes.** The template's default timeout is 5 minutes. All
-  presets here set their own time; if you write a new preset, set `timeout_min`
-  (or `time_hours`).
+  presets here set their own time; if you write a new preset, set `timeout_min`.
+  Never set `slurm_params.time_hours`: submitit then crashes on the time-limit
+  signal, and the training is killed without saving.
+- **No `Stopped at step ...` at the end of the log, and `run.json` has no
+  `status`.** The training was killed before it could save. Look at the end of
+  `<jobid>_0_log.err` for the reason. `last.pt` is still there from the last
+  epoch, so `resume=` loses at most one epoch.
 - **Job ends exactly at the limit** (`seff` shows `TIMEOUT`). It was killed.
   Resume it with `resume=<old run dir>` or pick a longer partition.
 - **`ModuleNotFoundError: tabicl_reproduction`.** You started from the wrong

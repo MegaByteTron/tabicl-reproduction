@@ -127,35 +127,23 @@ IMAGE = "${oc.env:JOB_IMAGE,oras://ghcr.io/megabytetron/tabicl-reproduction:late
 BIG_GPU = "80gb|40gb|h100|h200"
 
 
-def _slurm(partition: str, cpus: int, hours: int | None = None, **extra):
+def _slurm(partition: str, cpus: int, **extra):
     """SLURM resources for one GPU on the given partition."""
     return builds(
-        SlurmParams,
-        partition=partition,
-        gpus_per_node=1,
-        cpus_per_task=cpus,
-        time_hours=hours,
-        **extra,
+        SlurmParams, partition=partition, gpus_per_node=1, cpus_per_task=cpus, **extra
     )
 
 
-# The template's default `timeout_min` is 5 minutes, so every preset sets its
-# own. submitit lets `time_hours` (an int) override `timeout_min`, which is why
-# sub-hour partitions set only `timeout_min`. Long presets set both to the same
-# limit so the two never disagree.
+# Every preset sets the time limit only through `timeout_min` (the template's
+# default is 5 minutes). Never set the template's `time_hours`: it becomes the
+# string "2:00:00", which SLURM accepts but submitit then uses as its own time
+# limit in minutes. Its handler for the time-limit signal multiplies that
+# value, crashes, and the training is killed before it can save (job 5217341).
 # Students may only use the GPU-TEACHING-* partitions (2D, 2H, 5H, 7D, 9M).
-_SHORT = {"test": ("gpu-teaching-9m", 9)}
-_LONG = {"gpu_2h": ("gpu-teaching-2h", 2), "gpu_5h": ("gpu-teaching-5h", 5)}
-
 PRESETS = {
-    **{
-        name: (_slurm(partition, 4), minutes)
-        for name, (partition, minutes) in _SHORT.items()
-    },
-    **{
-        name: (_slurm(partition, 8, hours, constraint=BIG_GPU), hours * 60)
-        for name, (partition, hours) in _LONG.items()
-    },
+    "test": (_slurm("gpu-teaching-9m", 4), 9),
+    "gpu_2h": (_slurm("gpu-teaching-2h", 8, constraint=BIG_GPU), 2 * 60),
+    "gpu_5h": (_slurm("gpu-teaching-5h", 8, constraint=BIG_GPU), 5 * 60),
 }
 
 job_store = store(group="cfg/job")
