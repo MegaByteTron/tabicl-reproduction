@@ -1,8 +1,9 @@
+import argparse
 from pathlib import Path
-import argparse, json
+
+import matplotlib
 import numpy as np
 import pandas as pd
-import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -68,6 +69,7 @@ for a, key, epoch, label in zip(
     ["train/loss", "train/accuracy"],
     ["epoch/loss", "epoch/accuracy"],
     ["Training loss", "Training accuracy"],
+    strict=False,
 ):
     a.plot(
         t.step, t[key], color=blue, alpha=0.18, lw=0.7, label="Logged 10-step metric"
@@ -85,7 +87,10 @@ finish(
 )
 fig, axs = plt.subplots(2, 2, figsize=(10, 7))
 for a, k, label in zip(
-    axs.flat, keys[:4], ["Accuracy", "Balanced accuracy", "ROC AUC", "Log loss"]
+    axs.flat,
+    keys[:4],
+    ["Accuracy", "Balanced accuracy", "ROC AUC", "Log loss"],
+    strict=False,
 ):
     a.plot(agg.index, agg[k], color=blue, lw=2)
     a.scatter([step], [agg[k].iloc[-1]], color=orange, zorder=3)
@@ -102,7 +107,10 @@ finish(
 )
 fig, axs = plt.subplots(1, 2, figsize=(11, 4.5))
 for a, k, label in zip(
-    axs, ["accuracy", "balanced_accuracy"], ["Accuracy", "Balanced accuracy"]
+    axs,
+    ["accuracy", "balanced_accuracy"],
+    ["Accuracy", "Balanced accuracy"],
+    strict=False,
 ):
     g = d.groupby("step")[k]
     lo = g.quantile(0.25)
@@ -123,7 +131,10 @@ finish(
 )
 fig, axs = plt.subplots(1, 2, figsize=(10, 4.8))
 for a, k, label in zip(
-    axs, ["accuracy", "balanced_accuracy"], ["Accuracy", "Balanced accuracy"]
+    axs,
+    ["accuracy", "balanced_accuracy"],
+    ["Accuracy", "Balanced accuracy"],
+    strict=False,
 ):
     ids = last.index
     a.scatter(
@@ -163,7 +174,7 @@ finish(
 )
 order = last.sort_values("balanced_accuracy").index
 fig, axs = plt.subplots(1, 2, figsize=(12, 11))
-for a, ids in zip(axs, [order[:29], order[29:]]):
+for a, ids in zip(axs, [order[:29], order[29:]], strict=False):
     z = last.loc[ids]
     y = np.arange(len(z))
     a.hlines(y, z.balanced_accuracy, z.accuracy, color="#cbd5e1", lw=2)
