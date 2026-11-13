@@ -105,6 +105,7 @@ class Checkpointer:
         def request_stop(signum: int, frame: Any) -> None:
             print(f"Received {signal.Signals(signum).name}, stopping after this step.")
             trainer.stop_requested = True
+            trainer.stop_reason = signal.Signals(signum).name
 
         for sig in STOP_SIGNALS:
             signal.signal(sig, request_stop)

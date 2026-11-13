@@ -25,17 +25,3 @@ class TableSample:
 
     def __iter__(self) -> Iterator[torch.Tensor]:
         return iter((self.X_train, self.y_train, self.X_test, self.y_test))
-
-
-def to_model_inputs(sample: TableSample) -> tuple[torch.Tensor, torch.Tensor]:
-    """Turn a sample into the (x, y) inputs that NanoTabICLv2.forward expects.
-
-    x: [batch, n_train + n_test, n_features], training rows first
-    y: [batch, n_train]
-
-    Samples without a batch dimension get one of size 1.
-    """
-    x = torch.cat([sample.X_train, sample.X_test], dim=-2)
-    if x.dim() == 2:
-        return x.unsqueeze(0), sample.y_train.unsqueeze(0)
-    return x, sample.y_train
