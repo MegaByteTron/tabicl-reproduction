@@ -51,13 +51,14 @@ def test_finish_uploads_logs_and_models_but_not_last_pt(tmp_path, monkeypatch):
     logger = MetricsLogger(tmp_path)
     logger.write_run_info()
     (tmp_path / "metrics.jsonl").write_text('{"step": 1}\n')
+    (tmp_path / "eval_datasets.jsonl").write_text('{"step": 1}\n')
     for name in ("best.pt", "model.pt", "last.pt"):
         (tmp_path / name).write_bytes(b"weights")
 
     logger.finish(status="finished", step=1)
 
-    # Only files that exist are uploaded; eval_datasets.jsonl was never written.
-    assert run.saved == ["run.json", "metrics.jsonl"]
+    # metrics.jsonl and run.json are already in W&B (wandb.log, the summary).
+    assert run.saved == ["eval_datasets.jsonl"]
     (artifact,) = run.artifacts
     assert artifact.name == "model-abc123" and artifact.type == "model"
     assert artifact.metadata == {"status": "finished", "step": 1}
