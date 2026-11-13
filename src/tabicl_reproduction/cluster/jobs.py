@@ -44,12 +44,11 @@ class ClusterJobMixin(Job):
 
 
 class StoppableCommand:
-    """Runs the training command; on the time-limit signal, lets it save first.
+    """Runs the training command; on the time limit or scancel, lets it save first.
 
-    SLURM sends SIGUSR2 to submitit's process, not to the training. For a
-    function without a checkpoint method, submitit then ends the job at once
-    and the training is killed mid-step. This checkpoint method forwards the
-    signal and waits until the training has saved last.pt and exited.
+    SLURM sends its signals to submitit's process, not to the training:
+    SIGUSR2 before the time limit, SIGTERM on scancel (which submitit only
+    logs). Both are forwarded, so the training saves last.pt and exits.
     """
 
     def __init__(self, command: list[str], stop_timeout_s: float = 60.0):
@@ -68,6 +67,8 @@ class StoppableCommand:
         # must be able to wait for the process too.
         self._waiter = threading.Thread(target=self._process.wait, daemon=True)
         self._waiter.start()
+        # Replaces submitit's handler, which only logs SIGTERM.
+        signal.signal(signal.SIGTERM, self._on_cancel)
         while self._waiter.is_alive():
             self._waiter.join(timeout=1.0)
         if self._process.returncode != 0:
@@ -80,8 +81,15 @@ class StoppableCommand:
         if process is not None and waiter is not None and process.returncode is None:
             print("Time limit: asking the training to stop and save.", flush=True)
             process.send_signal(signal.SIGUSR2)
+            # submitit ends the job when this returns, so wait for the save.
             waiter.join(timeout=self.stop_timeout_s)
         return None
+
+    def _on_cancel(self, *args: Any) -> None:
+        """scancel: __call__ keeps waiting while the training saves and exits."""
+        if self._process is not None and self._process.returncode is None:
+            print("Cancelled: asking the training to stop and save.", flush=True)
+            self._process.send_signal(signal.SIGTERM)
 
 
 @dataclass
@@ -163,7 +171,8 @@ job_store(
         slurm_params=_sweep_slurm,
         timeout_min=_sweep_minutes,
         num_workers=2,
-        parameters={"optimizer.lr": [1e-3, 4e-3]},
+        # Around 1e-3, the value that trained stably (4e-3 diverged).
+        parameters={"optimizer.lr": [5e-4, 1e-3, 2e-3]},
         metric_name="eval/log_loss",
         metric_goal="minimize",
     ),

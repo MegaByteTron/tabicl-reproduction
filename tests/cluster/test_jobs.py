@@ -83,7 +83,7 @@ def test_sweep_settings():
     assert cfg.num_workers == 2
     assert cfg.metric_name == "eval/log_loss"
     assert cfg.metric_goal == "minimize"
-    assert cfg.parameters == {"optimizer.lr": [1e-3, 4e-3]}
+    assert cfg.parameters == {"optimizer.lr": [5e-4, 1e-3, 2e-3]}
 
 
 @pytest.mark.parametrize("name", ["test", "gpu_2h", "gpu_5h"])
@@ -127,7 +127,8 @@ def test_job_container_mounts_the_shared_datasets(job_class, monkeypatch):
     assert command.endswith("--nv image.sif python")
 
 
-# A stand-in for the training: on SIGUSR2 it finishes its step, then saves.
+# A stand-in for the training: on SIGUSR2 or SIGTERM it finishes its step,
+# then saves. Without a signal it gives up after 10 s, without saving.
 TRAINING = """
 import pathlib, signal, sys, time
 ready, saved = map(pathlib.Path, sys.argv[1:])
@@ -136,11 +137,14 @@ def request_stop(*_):
     global stop
     stop = True
 signal.signal(signal.SIGUSR2, request_stop)
+signal.signal(signal.SIGTERM, request_stop)
 ready.touch()
-while not stop:
+deadline = time.time() + 10
+while not stop and time.time() < deadline:
     time.sleep(0.05)
-time.sleep(0.5)  # finish the current step
-saved.touch()
+if stop:
+    time.sleep(0.5)  # finish the current step
+    saved.touch()
 """
 
 
@@ -167,6 +171,25 @@ def test_time_limit_signal_waits_until_the_training_saved(tmp_path):
     finally:
         signal.signal(signal.SIGUSR2, previous)
     assert saved_when_checkpoint_returned == [True]
+
+
+def test_scancel_is_passed_on_so_the_training_saves(tmp_path):
+    ready, saved = tmp_path / "ready", tmp_path / "saved"
+    command = StoppableCommand([sys.executable, "-c", TRAINING, str(ready), str(saved)])
+
+    def send_scancel_signal():
+        while not ready.exists():
+            time.sleep(0.05)
+        os.kill(os.getpid(), signal.SIGTERM)  # what scancel sends
+
+    # Like submitit, which logs SIGTERM and otherwise ignores it.
+    previous = signal.signal(signal.SIGTERM, lambda *_: None)
+    try:
+        threading.Thread(target=send_scancel_signal, daemon=True).start()
+        assert command() == 0
+    finally:
+        signal.signal(signal.SIGTERM, previous)
+    assert saved.exists()
 
 
 def test_failing_training_fails_the_job():

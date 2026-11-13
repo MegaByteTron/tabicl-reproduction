@@ -192,7 +192,8 @@ Do these in order; do not skip ahead.
 
 ```bash
 squeue -u $USER          # your queued and running jobs
-scancel <jobid>          # cancel one job   (scancel -u $USER cancels all)
+scancel <jobid>          # cancel one job; the training saves last.pt first
+                         # (scancel -u $USER cancels all)
 seff <jobid>             # after it ends: CPU/memory use and exit state
 ```
 
