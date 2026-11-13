@@ -69,3 +69,18 @@ def test_cli_resume(tmp_path):
 def test_every_option_runs(tmp_path, group):
     run_cli(tmp_path, group, "epochs=1")
     assert (tmp_path / "model.pt").exists()
+
+
+def test_resume_with_workers_does_not_repeat_tables(tmp_path):
+    # Tables come from DataLoader workers, as on the cluster.
+    options = ("data.num_workers=2", "data.max_features=50", "steps_per_epoch=4")
+    run_cli(tmp_path / "first", "epochs=1", *options)
+    run_cli(tmp_path / "resumed", f"resume={tmp_path / 'first'}", *options)
+
+    def prior_stats(run):
+        metrics = pd.read_json(tmp_path / run / "metrics.jsonl", lines=True)
+        rows = metrics.dropna(subset=["prior/n_features"])
+        return rows.filter(like="prior/").head(4).to_numpy().tolist()
+
+    # The resumed run continues with new tables, not the first run's again.
+    assert prior_stats("resumed") != prior_stats("first")

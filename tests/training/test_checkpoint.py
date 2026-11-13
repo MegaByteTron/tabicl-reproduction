@@ -67,3 +67,4 @@ def test_slurm_signal_stops_and_saves(make_trainer, tables, tmp_path):
 
     assert status == "stopped"
     assert (tmp_path / "last.pt").exists()
+    assert (tmp_path / "model.pt").exists()  # the weights so far, for evaluation
