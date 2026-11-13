@@ -1,0 +1,59 @@
+\documentclass[10pt,a4paper,twoside]{article}
+\usepackage[a4paper,top=20mm,bottom=20mm,outer=5cm]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage{natbib}
+\bibliographystyle{abbrvnat}
+\setcitestyle{authoryear}
+
+\title{Project Machine Learning\\--- Milestone 1 ---} 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                                     %
+%   EVERYTHING BELOW CAN BE CHANGED   %
+%                                     %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\author{Max Mustermann}
+\date{\today}
+
+\usepackage{blindtext}
+\usepackage{mflogo}
+
+\begin{document}
+\maketitle
+\section{Overview}
+\Blindtext
+\section{Feature Extraction}
+\begin{figure}
+\centering
+\includegraphics{figure-1}
+\caption{A figure caption {\em describes} the figure. Explanation and interpretation is provided in the main text.}\label{fig:exmpl_figure}
+\end{figure}
+Matplotlib (\url{https://matplotlib.org/}) allows you to save figures as SVG or PDF which are vector graphics. This is the preferred format for figures. See also \Cref{fig:exmpl_figure} for an example vector graphic\footnote{Footnotes contain additional information that is not necessary for understanding your report. \Cref{fig:exmpl_figure} was created with \MP.}. Figures with many elements are more efficiently saved in PNG format, but don't forget to save them at 300dpi.
+
+\blindmathpaper
+\section{Feature Selection}
+\Blindtext
+\section{Conclusion}
+\begin{table}
+\centering
+\begin{tabular}{r|rrr}
+& Method A & Method B & Method C \\
+\hline
+Condition 1 & 0.78 & \textbf{0.81} & 0.65 \\
+Condition 2 & \textbf{0.50} & 0.43 & 0.44 \\
+Condition 3 & \textbf{0.96} & 0.95 & 0.94
+\end{tabular}
+\caption{This is a table caption. Best method for each condition in bold font.}\label{tab:methods_vs_conditions}
+\end{table}
+\Cref{tab:methods_vs_conditions} shows an example of a table.
+\blindtext
+
+\paragraph{Some citation examples}
+Without parentheses if in running text: \citet{einstein} could show something. With parentheses if not in running text: \LaTeX\ is very powerful \citep[see][]{latexcompanion,knuthwebsite}.
+
+\bibliography{report_template}
+\end{document}
