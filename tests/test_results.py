@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 import torch
 
-from tabicl_reproduction.data import TableSample, to_model_inputs
+from tabicl_reproduction.data import TableSample
 from tabicl_reproduction.results import (
     COLUMNS,
     ResultsWriter,
@@ -30,7 +30,8 @@ def test_same_values_as_evaluator(model):
 
     # How our model passes proba: softmax over the training classes,
     # for all test rows (-1 rows included).
-    logits = model(*to_model_inputs(table))[0]
+    X = torch.cat([table.X_train, table.X_test]).unsqueeze(0)  # batch of one
+    logits = model(X, table.y_train.unsqueeze(0))[0]
     proba = torch.softmax(logits[:, :3], dim=-1)
     metrics = compute_metrics(table.y_test, proba)
     # Equal for ordinary predictions; log_loss only differs past the 1e-15 clip.
