@@ -22,6 +22,18 @@ def test_openml_split_is_reproducible(cached_dataset):
     assert torch.equal(ds.load(1).X_train, ds.load(1).X_train)
 
 
+def test_openml_drops_rows_without_a_label(cached_dataset, check_sample):
+    target_path = cached_dataset / "1" / "target.parquet"
+    target = pd.read_parquet(target_path)
+    target.loc[[0, 5, 9], "target"] = None  # 3 of the 40 rows are unlabeled
+    target.to_parquet(target_path)
+
+    ds = OpenMLDataset(dataset_ids=(1,), data_dir=cached_dataset, download=False)
+    sample = ds.load(1)
+    check_sample(sample)
+    assert len(sample.X_train) + len(sample.X_test) <= 37
+
+
 def test_openml_respects_max_train(cached_dataset):
     ds = OpenMLDataset(
         dataset_ids=(1,), data_dir=cached_dataset, download=False, max_train=10

@@ -9,6 +9,13 @@ from typing import Any
 import torch
 import wandb
 
+# Uploaded to W&B at the end of a run (see MetricsLogger.upload_to_wandb).
+# Only what W&B lacks: metrics.jsonl and run.json repeat what wandb.log and
+# the run summary already hold, and the template uploads the config (.hydra/*).
+# W&B gets only the mean eval scores, so the per-dataset scores go as a file.
+RUN_FILES = ("eval_datasets.jsonl",)
+MODEL_FILES = ("best.pt", "model.pt")
+
 
 class MetricsLogger:
     """Appends metrics to JSON-lines files in the run directory.
@@ -36,6 +43,59 @@ class MetricsLogger:
 
     def log_datasets(self, rows: list[dict[str, Any]], step: int) -> None:
         self._append("eval_datasets.jsonl", [{"step": step} | row for row in rows])
+
+    def update_run_info(self, **extra: Any) -> None:
+        """Add fields (end time, status) to run.json after training."""
+        path = self.directory / "run.json"
+        info = json.loads(path.read_text()) if path.exists() else {}
+        path.write_text(json.dumps(info | extra, indent=2))
+
+    def finish(self, **extra: Any) -> None:
+        """Write the final fields to run.json and close the W&B run.
+
+        Closing W&B here, right after the checkpoint is saved, uploads the
+        last rows while the job still has time. Leaving it to W&B's exit hook
+        risks the job being killed first, and W&B then shows the run as
+        crashed. The fields also go to the W&B summary, so W&B shows why a
+        run ended (status "stopped", signal "SIGUSR2").
+        """
+        self.update_run_info(**extra)
+        if wandb.run is not None:
+            wandb.run.summary.update(
+                {f"run/{key}": value for key, value in extra.items()}
+            )
+            try:
+                self.upload_to_wandb(wandb.run, **extra)
+            except Exception as error:  # never lose the run over an upload
+                print(f"W&B upload failed: {error}", flush=True)
+            wandb.finish()
+
+    def upload_to_wandb(self, run: Any, **metadata: Any) -> None:
+        """Upload the run's files to W&B.
+
+        - The per-dataset eval scores go to the run's Files tab.
+        - best.pt and model.pt go to a "model" artifact, model-<run id>, in
+          the Artifacts tab. Download it with `wandb artifact get`.
+
+        last.pt is left out: it is 3x larger (optimizer state) and only
+        needed to resume, which uses the copy on the cluster.
+        """
+        for name in RUN_FILES:
+            if (self.directory / name).exists():
+                run.save(
+                    str(self.directory / name),
+                    base_path=str(self.directory),
+                    policy="now",
+                )
+        models = [self.directory / n for n in MODEL_FILES]
+        models = [path for path in models if path.exists()]
+        if models:
+            artifact = wandb.Artifact(
+                f"model-{run.id}", type="model", metadata=metadata
+            )
+            for path in models:
+                artifact.add_file(str(path))
+            run.log_artifact(artifact)
 
     def write_run_info(self, **extra: Any) -> dict[str, Any]:
         """Write run.json: where and with what this run was trained."""

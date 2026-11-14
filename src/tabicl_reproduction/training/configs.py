@@ -76,7 +76,10 @@ AdamWScheduleFree = builds(
     zen_partial=True,
     hydra_convert="all",
     populate_full_signature=True,
-    lr=4e-3,
+    # lr=4e-3 (nanoTabPFN's value) diverged around step 600 on the cluster
+    # with our 8 tables per step; 1e-3 with a short warm-up trained stably.
+    lr=1e-3,
+    warmup_steps=200,
     weight_decay=0.0,
 )
 AdamW = builds(
