@@ -111,28 +111,37 @@ It works wherever a scikit-learn classifier does, e.g. `DecisionBoundary` in
 
 Every model is scored by the same code (`tabicl_reproduction/evaluation/`):
 
-- `score_tables(estimator, tables)` fits any estimator on each table's
-  training rows, predicts the test rows and computes accuracy, balanced
-  accuracy, log loss, ROC AUC and ECE. It writes nothing; it returns the rows.
+- **Models** are registered in `models.py` with `@register_model`: k-NN,
+  logistic regression, random forest, gradient-boosted trees, and our
+  `nano_tabicl_v2` (needs `--checkpoint`). Each factory returns a new,
+  unfitted scikit-learn classifier.
+- **Metrics** are registered in `metrics.py` with `@register_metric`, each a
+  function of `(y_true, proba)`: accuracy, balanced accuracy, macro F1, log
+  loss, ROC AUC and ECE. Test rows whose class never appears in training
+  (label -1) are left out of every metric.
+- `benchmark.score_table(model, table)` fits a model on a table's training
+  rows, calls `predict_proba` once, and computes every registered metric from
+  those probabilities. It writes nothing; it returns the row.
 - Pretraining validation (`evaluator=tabpfn_val`) calls it with our model
   (one column order, to stay fast) to log `eval/*` and pick `best.pt`.
-- The experiment calls it for every model and saves the results.
+- `scripts/benchmark.py` calls it for every model on every table and saves
+  the results.
 
-The baselines are k-NN, logistic regression, random forest and
-gradient-boosted trees (scikit-learn defaults), fitted on every table.
+Adding a baseline or a metric is one decorated function.
 
 ```bash
 uv run python -m tabicl_reproduction.data.prior_val          # once: 1,600 prior tables
-uv run python scripts/compare.py --limit 5                   # quick test
-uv run python scripts/compare.py                             # all baselines
-uv run python scripts/compare.py --checkpoint <run dir>      # + our best.pt
-uv run python scripts/compare.py --checkpoint <run dir> --models tabicl_best
-uv run python scripts/compare.py --summary                   # summary only
+uv run python scripts/benchmark.py --limit 5                   # quick test
+uv run python scripts/benchmark.py                             # all baselines
+uv run python scripts/benchmark.py --checkpoint <run dir>      # + our model (best.pt)
+uv run python scripts/benchmark.py --checkpoint <run dir> --models nano_tabicl_v2
+uv run python scripts/benchmark.py --summary                   # summary only
 ```
 
 Tables: every `tabpfn_val` dataset with 5-fold stratified cross-validation
 (at most 2,048 training rows per fold; `--folds` changes the number), and the
-saved `prior_val` tables with their fixed split. Outputs, in `results/`:
+saved `prior_val` tables (all 1,600; `--prior-tables` uses fewer) with their
+fixed split. Outputs, in `results/`:
 
 | File | Contents |
 |---|---|
@@ -144,12 +153,12 @@ saved `prior_val` tables with their fixed split. Outputs, in `results/`:
 from tabicl_reproduction.evaluation.results import load_predictions, load_results
 
 df = load_results("results/*.csv")           # all models in one DataFrame
-p = load_predictions("results/predictions/tabicl_best/tabpfn_val/31_split0.npz")
+p = load_predictions("results/predictions/nano_tabicl_v2/tabpfn_val/31_split0.npz")
 # p["proba"][:, k] is class p["class_names"][k]; y_true -1: class unseen in training
 ```
 
 Scripts writing to a model's CSV refuse to append to an existing one; move it
-first. Run `compare.py` from the repo root (locally, or in the container shell
+first. Run `scripts/benchmark.py` from the repo root (locally, or in the container shell
 on the cluster), not as a SLURM job: a job runs in a temporary copy of the
 repo, so `results/` would be lost. On a GPU, add `--device cuda`.
 

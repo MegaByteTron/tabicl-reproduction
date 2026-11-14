@@ -1,13 +1,20 @@
 """Scoring models on tables, the same way during pretraining and after.
 
-- metrics.py: compute_metrics, the only implementation of the metrics.
-- core.py: score_table / score_tables, the only place a table gets scored.
+- metrics.py: the metric registry (@register_metric) and evaluate_metrics.
+- models.py: the model registry (@register_model): baselines and ours.
+- benchmark.py: score_table, and every model on every table
+  (scripts/benchmark.py).
 - results.py: the results CSV, saved predictions and the summary.
-- baselines.py: the scikit-learn baselines.
-- experiment.py: every model on every table (scripts/compare.py).
 """
 
-from .core import score_table, score_tables
-from .metrics import METRICS, compute_metrics
+from .metrics import METRIC_REGISTRY, evaluate_metrics, register_metric
+from .models import MODEL_REGISTRY, get_models, register_model
 
-__all__ = ["METRICS", "compute_metrics", "score_table", "score_tables"]
+__all__ = [
+    "METRIC_REGISTRY",
+    "MODEL_REGISTRY",
+    "evaluate_metrics",
+    "get_models",
+    "register_metric",
+    "register_model",
+]

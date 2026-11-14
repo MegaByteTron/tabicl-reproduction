@@ -1,7 +1,7 @@
 """Validation during pretraining, for W&B and best.pt.
 
 A thin adapter: the model is wrapped in the same TabICLClassifier and scored
-by the same score_tables as in the final experiment (evaluation/), with one
+by the same score_tables as in the benchmark (evaluation/), with one
 column order to stay fast. This file only turns the rows into the summary
 the trainer logs.
 """
@@ -14,14 +14,8 @@ import torch
 from torch import nn
 
 from tabicl_reproduction.data import load_data
-from tabicl_reproduction.evaluation.core import score_tables
-from tabicl_reproduction.evaluation.metrics import (  # noqa: F401  (re-exported)
-    METRICS as SUMMARY_METRICS,
-)
-from tabicl_reproduction.evaluation.metrics import (  # noqa: F401  (re-exported)
-    expected_calibration_error,
-    roc_auc,
-)
+from tabicl_reproduction.evaluation.benchmark import score_tables
+from tabicl_reproduction.evaluation.metrics import metric_names
 from tabicl_reproduction.model.classifier import TabICLClassifier
 
 
@@ -63,6 +57,6 @@ class Evaluator:
         ]
         if not rows:
             raise ValueError("No table could be evaluated")
-        summary = {m: float(np.nanmean([r[m] for r in rows])) for m in SUMMARY_METRICS}
+        summary = {m: float(np.nanmean([r[m] for r in rows])) for m in metric_names()}
         summary |= {"n_datasets": len(rows), "time_s": time.perf_counter() - start}
         return {"summary": summary, "datasets": rows}

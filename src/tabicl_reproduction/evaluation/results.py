@@ -1,21 +1,19 @@
-"""One results CSV format for all models, plus the per-row predictions.
+"""Saving and reading benchmark results: one CSV per model, plus predictions.
 
-    writer = ResultsWriter("results/random_forest.csv", model="random_forest",
-                           predictions_dir="results/predictions/random_forest")
-    score_tables(estimator, tables, on_row=partial(writer.add, source="tabpfn_val"))
-    df = load_results("results/*.csv")
-    summary = summarize(df)
+    df = load_results("results/*.csv")           # every model in one DataFrame
+    summary = summarize(df)                       # what summary.txt shows
+    p = load_predictions("results/predictions/random_forest/tabpfn_val/31_split0.npz")
 
 Columns (one row per model, table and split; empty cells load as NaN):
 model, source, table_id, split, data_version (prior tables only),
 checkpoint_step (our model only), n_train, n_test, n_features, n_classes,
-accuracy, balanced_accuracy, log_loss, roc_auc, ece, fit_s, predict_s,
-time_s, status (ok or skipped), error (why skipped), git_commit.
+one column per registered metric, fit_s, predict_s, time_s,
+status (ok or skipped), error (why skipped), git_commit.
 
-Predictions: predictions_dir/<source>/<table_id>_split<k>.npz with y_true
+Predictions: <predictions_dir>/<source>/<table_id>_split<k>.npz with y_true
 (labels 0..n_classes-1, -1 for a class unseen in training), proba
 ([n_test, n_classes], column k for label k) and class_names (the original
-label of each class). See load_predictions().
+label of each class).
 """
 
 import csv
@@ -30,7 +28,7 @@ import pandas as pd
 from tabicl_reproduction.data import TableSample
 from tabicl_reproduction.utils import git_commit
 
-from .metrics import HIGHER_IS_BETTER, METRICS
+from .metrics import METRIC_REGISTRY, metric_names
 
 COLUMNS = (
     "model",
@@ -43,7 +41,7 @@ COLUMNS = (
     "n_test",
     "n_features",
     "n_classes",
-    *METRICS,
+    *metric_names(),
     "fit_s",
     "predict_s",
     "time_s",
@@ -73,7 +71,7 @@ TABLE_KEY = ["source", "table_id", "split"]
 
 
 def make_table_id(source: str, dataset_id: int | None) -> str:
-    """The table_id every model must write: "prior_0017" or an OpenML id "31"."""
+    """The table_id every model writes: "prior_0017" or an OpenML id "31"."""
     if dataset_id is None:
         raise ValueError("The table has no dataset_id")
     return f"prior_{dataset_id:04d}" if source == "prior_val" else str(dataset_id)
@@ -119,11 +117,7 @@ class ResultsWriter:
         source: str,
         data_version: str | None = None,
     ) -> None:
-        """Save a row from score_table (and its predictions, if given).
-
-        The positional arguments match score_tables' on_row, so
-        partial(writer.add, source=...) can be passed as on_row.
-        """
+        """Save a row from score_table, and its predictions if given."""
         table_id = make_table_id(source, row["dataset_id"])
         full = {c: row[c] for c in COLUMNS if c in row} | {
             "model": self.model,
@@ -145,8 +139,7 @@ class ResultsWriter:
 
 def save_predictions(path: str | Path, table: TableSample, proba: np.ndarray) -> None:
     """Save a table's test labels and predicted probabilities (see module doc)."""
-    n_classes = proba.shape[1]
-    names = table.class_names or tuple(str(k) for k in range(n_classes))
+    names = table.class_names or tuple(str(k) for k in range(proba.shape[1]))
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(
@@ -171,8 +164,7 @@ def load_predictions(path: str | Path) -> dict[str, np.ndarray]:
 def load_results(paths: str | Path | Iterable[str | Path]) -> pd.DataFrame:
     """Read one or many result CSVs (glob patterns allowed) into one DataFrame.
 
-    Empty cells become NaN. Raises ValueError if a file's columns differ
-    from COLUMNS.
+    Raises ValueError if a file's columns differ from COLUMNS.
     """
     if isinstance(paths, str | Path):
         paths = [paths]
@@ -210,6 +202,7 @@ def summarize(df: pd.DataFrame) -> pd.DataFrame:
     A model at each checkpoint counts as its own model. NaN metrics (e.g.
     ROC AUC with one class in the test rows) are left out.
     """
+    metrics = list(metric_names())
     ok = df[df["status"] == "ok"]
     # dropna=False keeps the baselines, which have an empty checkpoint_step.
     run = ["model", "checkpoint_step"]
@@ -221,23 +214,23 @@ def summarize(df: pd.DataFrame) -> pd.DataFrame:
         raise ValueError("A model has two rows for the same table; check the CSVs")
 
     per_table = (
-        common.groupby([*run, "source", "table_id"], dropna=False)[list(METRICS)]
+        common.groupby([*run, "source", "table_id"], dropna=False)[metrics]
         .mean()
         .reset_index()
     )
     ranks = {
         f"{m}_rank": per_table.groupby(["source", "table_id"])[m].rank(
-            ascending=not HIGHER_IS_BETTER[m]
+            ascending=not METRIC_REGISTRY[m].higher_is_better
         )
-        for m in METRICS
+        for m in metrics
     }
     per_table = per_table.assign(**ranks)
 
     groups = per_table.groupby([*run, "source"], dropna=False)
-    summary = groups[list(METRICS)].agg(["mean", "std"])
+    summary = groups[metrics].agg(["mean", "std"])
     summary.columns = [f"{metric}_{stat}" for metric, stat in summary.columns]
     mean_ranks = groups[list(ranks)].mean()
-    mean_ranks.columns = [f"{m}_mean_rank" for m in METRICS]
+    mean_ranks.columns = [f"{m}_mean_rank" for m in metrics]
     summary = summary.join(mean_ranks)
     summary.insert(0, "n_tables", groups.size())
     return summary.reset_index()

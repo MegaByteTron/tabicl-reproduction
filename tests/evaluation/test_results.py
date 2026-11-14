@@ -8,12 +8,8 @@ import torch
 from sklearn.metrics import confusion_matrix
 
 from tabicl_reproduction.data import TableSample
-from tabicl_reproduction.evaluation import compute_metrics, score_tables
-from tabicl_reproduction.evaluation.core import table_info
-from tabicl_reproduction.evaluation.metrics import (
-    expected_calibration_error,
-    roc_auc,
-)
+from tabicl_reproduction.evaluation.benchmark import score_tables, table_info
+from tabicl_reproduction.evaluation.metrics import evaluate_metrics
 from tabicl_reproduction.evaluation.results import (
     COLUMNS,
     ResultsWriter,
@@ -22,58 +18,6 @@ from tabicl_reproduction.evaluation.results import (
     summarize,
 )
 from tabicl_reproduction.model import TabICLClassifier
-
-# ----- metrics -----
-
-
-def test_hand_computed_example():
-    y = np.array([0, 0, 0, 1, -1])
-    proba = np.array([[0.9, 0.1], [0.8, 0.2], [0.7, 0.3], [0.6, 0.4], [0.5, 0.5]])
-    m = compute_metrics(y, proba)
-    assert m["accuracy"] == 0.75  # row 4 wrong, row 5 (-1) left out
-    assert m["balanced_accuracy"] == 0.5  # class 0: 3/3, class 1: 0/1
-    assert m["log_loss"] == pytest.approx(-np.log([0.9, 0.8, 0.7, 0.4]).mean())
-    assert m["roc_auc"] == 1.0  # the class-1 row is ranked above all others
-    assert m["ece"] == pytest.approx((0.1 + 0.2 + 0.3 + 0.6) / 4)
-
-
-def test_minus_one_rows_are_ignored():
-    y = np.array([0, 1, -1, 1])
-    proba = np.array([[0.7, 0.3], [0.4, 0.6], [0.0, 1.0], [0.2, 0.8]])
-    assert compute_metrics(y, proba) == compute_metrics(y[[0, 1, 3]], proba[[0, 1, 3]])
-
-
-def test_roc_auc_is_nan_with_one_class():
-    m = compute_metrics(np.array([1, 1]), np.array([[0.3, 0.7], [0.6, 0.4]]))
-    assert math.isnan(m["roc_auc"])
-    assert m["accuracy"] == 0.5
-
-
-def test_roc_auc_handles_binary_and_multiclass():
-    probs = np.array([[0.9, 0.1, 0.0], [0.2, 0.8, 0.0], [0.1, 0.1, 0.8]])
-    assert roc_auc(probs, np.array([0, 1, 2])) == 1.0
-    assert roc_auc(probs[:2], np.array([0, 1])) == 1.0
-
-
-def test_ece_is_zero_when_confidence_matches_accuracy():
-    probs = np.array([[1.0, 0.0], [0.0, 1.0]])
-    assert expected_calibration_error(probs, np.array([0, 1])) == 0.0
-    assert expected_calibration_error(probs, np.array([1, 0])) == 1.0
-
-
-def test_zero_probability_on_present_classes():
-    # Test rows hold classes 0 and 1 only; the last row puts all mass on 2,
-    # as k-NN or a random forest can. This must not crash.
-    y = np.array([0, 1, 0, 1])
-    proba = np.array([[0.6, 0.4, 0], [0.2, 0.8, 0], [0.8, 0.2, 0], [0, 0, 1.0]])
-    m = compute_metrics(y, proba)
-    assert all(math.isfinite(v) for v in m.values())
-
-
-def test_float_labels_work():
-    proba = np.array([[0.7, 0.3], [0.4, 0.6]])
-    assert compute_metrics(torch.tensor([0.0, 1.0]), proba)["accuracy"] == 1.0
-
 
 # ----- results CSV and predictions -----
 
@@ -116,7 +60,7 @@ def test_round_trip(tmp_path, model):
     assert list(df["table_id"]) == ["31", "prior_0001", "40"]
     assert list(df["status"]) == ["ok", "ok", "skipped"]
     ok = df.iloc[0]
-    for name in compute_metrics(tables[0].y_test, np.full((6, 3), 1 / 3)):
+    for name in evaluate_metrics(tables[0].y_test, np.full((6, 3), 1 / 3)):
         assert ok[name] == rows[0][name], name  # exactly, not approximately
     assert (ok["split"], ok["n_train"], ok["n_test"], ok["n_classes"]) == (1, 6, 5, 3)
     assert ok["checkpoint_step"] == 9500 and ok["git_commit"] == "1234567"

@@ -50,8 +50,8 @@ notebooks/
 # OS
 .DS_Store
 
-# Results of scripts/compare.py: the quick-test folder and the per-row
-# predictions (large; regenerate them with compare.py)
+# Results of scripts/benchmark.py: the quick-test folder and the per-row
+# predictions (large; regenerate them with scripts/benchmark.py)
 /results_test/
 /results/predictions/
 

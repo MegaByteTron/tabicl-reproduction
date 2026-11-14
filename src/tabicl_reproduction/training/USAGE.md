@@ -112,9 +112,9 @@ The training tables come from the synthetic prior, an endless stream.
 | `tabpfn_val` | Scores the model on the real `tabpfn_val` OpenML tables after every epoch. Tables with more classes than `max_classes` are skipped. |
 
 Validation scores the model the same way the final comparison does (the
-model wrapped in `TabICLClassifier`, scored by `evaluation.score_tables`;
+model wrapped in `TabICLClassifier`, scored by `evaluation.benchmark.score_tables`;
 see the README), with one column order instead of 8 to stay fast. So
-`eval/*` can differ slightly from the final numbers of `scripts/compare.py`,
+`eval/*` can differ slightly from the final numbers of `scripts/benchmark.py`,
 which also uses 5 folds instead of one split.
 
 The first evaluation downloads the datasets, which takes a while. Each one is
