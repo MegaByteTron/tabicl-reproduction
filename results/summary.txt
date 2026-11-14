@@ -1,9 +1,9 @@
                  model  checkpoint_step     source  n_tables  accuracy_mean  accuracy_std  balanced_accuracy_mean  balanced_accuracy_std  log_loss_mean  log_loss_std  roc_auc_mean  roc_auc_std  ece_mean  ece_std
-hist_gradient_boosting              NaN  prior_val      1600          0.757         0.235                   0.676                  0.280          0.895         0.883         0.876        0.139     0.129    0.126
+hist_gradient_boosting              NaN  prior_val      1600          0.767         0.234                   0.689                  0.279          0.841         0.847         0.884        0.135     0.120    0.119
 hist_gradient_boosting              NaN tabpfn_val       114          0.839         0.165                   0.776                  0.189          0.470         0.474         0.887        0.123     0.089    0.088
-                   knn              NaN  prior_val      1600          0.675         0.242                   0.577                  0.271          4.260         4.167         0.802        0.158     0.094    0.072
+                   knn              NaN  prior_val      1600          0.685         0.244                   0.591                  0.273          4.170         4.279         0.813        0.157     0.091    0.071
                    knn              NaN tabpfn_val       114          0.789         0.171                   0.697                  0.194          1.954         2.280         0.837        0.135     0.084    0.062
-   logistic_regression              NaN  prior_val      1600          0.685         0.231                   0.569                  0.273          0.826         0.594         0.828        0.148     0.080    0.052
+   logistic_regression              NaN  prior_val      1600          0.692         0.234                   0.579                  0.278          0.825         0.626         0.835        0.148     0.083    0.059
    logistic_regression              NaN tabpfn_val       114          0.819         0.165                   0.729                  0.195          0.456         0.389         0.872        0.139     0.086    0.077
-         random_forest              NaN  prior_val      1600          0.754         0.231                   0.664                  0.279          1.063         1.572         0.872        0.140     0.086    0.076
+         random_forest              NaN  prior_val      1600          0.763         0.232                   0.678                  0.281          1.026         1.494         0.880        0.136     0.086    0.076
          random_forest              NaN tabpfn_val       114          0.844         0.155                   0.779                  0.177          0.547         0.754         0.898        0.125     0.106    0.078
