@@ -4,6 +4,8 @@ Everything that depends on the data (label mapping, imputation values) is
 computed from the training rows only, so no test information leaks in.
 """
 
+from collections.abc import Sequence
+
 import numpy as np
 import pandas as pd
 import torch
@@ -129,8 +131,26 @@ def finalize(
     X_test: torch.Tensor,
     y_test: torch.Tensor,
     dataset_id: int | None = None,
+    split: int = 0,
+    label_names: Sequence[str] | None = None,
 ) -> TableSample:
-    """Apply label encoding and imputation to an already split table."""
+    """Apply label encoding and imputation to an already split table.
+
+    label_names[c] is the original name of label c (before encoding); the
+    sample's class_names then follow the encoded labels 0..n_classes-1.
+    """
+    class_names = None
+    if label_names is not None:
+        # encode_labels maps the sorted training labels to 0..n_classes-1.
+        class_names = tuple(str(label_names[c]) for c in torch.unique(y_train))
     y_train, y_test = encode_labels(y_train, y_test)
     X_train, X_test = impute(X_train, X_test)
-    return TableSample(X_train, y_train, X_test, y_test, dataset_id=dataset_id)
+    return TableSample(
+        X_train,
+        y_train,
+        X_test,
+        y_test,
+        dataset_id=dataset_id,
+        split=split,
+        class_names=class_names,
+    )

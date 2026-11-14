@@ -26,7 +26,7 @@ class SavedTablesDataset(IterableDataset[TableSample]):
         if not meta_path.exists():
             raise FileNotFoundError(
                 f"No complete set of saved tables in {self.data_dir}; delete "
-                "it and run: python -m tabicl_reproduction.prior_val"
+                "it and run: python -m tabicl_reproduction.data.prior_val"
             )
         paths = sorted(Path(self.data_dir).glob("prior_*.pt"))
         n_tables = json.loads(meta_path.read_text())["n_tables"]

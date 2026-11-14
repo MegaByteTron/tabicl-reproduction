@@ -87,68 +87,80 @@ is also not included as it could be done inside the model.
 
 When running the file, it will generate a plot of some random datasets.
 
-## Results
+## Our model as a scikit-learn classifier
 
-All models (baselines and ours) are scored by the same code in
-`tabicl_reproduction/results.py` and saved as one CSV row per
-(model, table, split): accuracy, balanced accuracy, log loss, ROC AUC and ECE,
-plus the table size, timing and code version.
+`TabICLClassifier` wraps a pretrained model in the scikit-learn interface.
+`fit` only stores the training rows (in-context learning, no weights
+change); `predict_proba` runs the forward pass, averaged over 8 column
+orders because the model depends on the order of the columns.
 
 ```python
-from tabicl_reproduction.results import ResultsWriter, load_results
+from tabicl_reproduction.model import TabICLClassifier
 
-writer = ResultsWriter("results/random_forest.csv", model="random_forest")
-writer.add(table, proba, source="tabpfn_val", table_id="31", split_seed=0, time_s=0.3)
-writer.skip(
-    table, "one class in training", source="tabpfn_val", table_id="40", split_seed=0
-)
-
-df = load_results("results/*.csv")  # all models in one DataFrame
+clf = TabICLClassifier.from_checkpoint("outputs/runs/<date>/<time>")  # best.pt
+clf.fit(X_train, y_train)          # any labels; clf.classes_ keeps them
+proba = clf.predict_proba(X_test)  # column k is clf.classes_[k]
+pred = clf.predict(X_test)
 ```
 
-`proba` holds the probabilities for all test rows, one column per training
-class. Test rows whose class never appears in training (label -1) are left
-out of the metrics. The module docstring lists every column.
+It works wherever a scikit-learn classifier does, e.g. `DecisionBoundary` in
+`show()`. Tables with more classes than the model supports (10) raise
+`UnsupportedTableError`.
 
-## Baselines
+## Evaluation: our model vs. the baselines
 
-k-NN, logistic regression, random forest and gradient-boosted trees
-(scikit-learn defaults), each fitted from scratch on every table:
+Every model is scored by the same code (`tabicl_reproduction/evaluation/`):
+
+- `score_tables(estimator, tables)` fits any estimator on each table's
+  training rows, predicts the test rows and computes accuracy, balanced
+  accuracy, log loss, ROC AUC and ECE. It writes nothing; it returns the rows.
+- Pretraining validation (`evaluator=tabpfn_val`) calls it with our model
+  (one column order, to stay fast) to log `eval/*` and pick `best.pt`.
+- The experiment calls it for every model and saves the results.
+
+The baselines are k-NN, logistic regression, random forest and
+gradient-boosted trees (scikit-learn defaults), fitted on every table.
 
 ```bash
-uv run python -m tabicl_reproduction.prior_val          # once: 1,600 prior tables
-uv run python -m tabicl_reproduction.baselines --limit 20   # quick test
-uv run python -m tabicl_reproduction.baselines          # full run + summary
+uv run python -m tabicl_reproduction.data.prior_val          # once: 1,600 prior tables
+uv run python scripts/compare.py --limit 5                   # quick test
+uv run python scripts/compare.py                             # all baselines
+uv run python scripts/compare.py --checkpoint <run dir>      # + our best.pt
+uv run python scripts/compare.py --checkpoint <run dir> --models tabicl_best
+uv run python scripts/compare.py --summary                   # summary only
 ```
+
+Tables: every `tabpfn_val` dataset with 5-fold stratified cross-validation
+(at most 2,048 training rows per fold; `--folds` changes the number), and the
+saved `prior_val` tables with their fixed split. Outputs, in `results/`:
+
+| File | Contents |
+|---|---|
+| `<model>.csv` | One row per table and fold: table size, the five metrics, fit and predict time, `ok` or `skipped` with the reason, checkpoint step, git commit. |
+| `summary.txt` | Per model and source: mean, std and mean rank of each metric. Folds are averaged per table first, and only tables every model scored are counted. |
+| `predictions/<model>/<source>/<table>_split<k>.npz` | `y_true`, `proba` and `class_names` of every test row, for confusion matrices and ROC curves (not committed). |
+
+```python
+from tabicl_reproduction.evaluation.results import load_predictions, load_results
+
+df = load_results("results/*.csv")           # all models in one DataFrame
+p = load_predictions("results/predictions/tabicl_best/tabpfn_val/31_split0.npz")
+# p["proba"][:, k] is class p["class_names"][k]; y_true -1: class unseen in training
+```
+
+Scripts writing to a model's CSV refuse to append to an existing one; move it
+first. Run `compare.py` from the repo root (locally, or in the container shell
+on the cluster), not as a SLURM job: a job runs in a temporary copy of the
+repo, so `results/` would be lost. On a GPU, add `--device cuda`.
 
 `load_data("prior_val")` reads the saved prior tables
 (`.cache/datasets/prior_val` locally, `/home/space/datasets/prior_val` on the
-cluster), so every model is scored on the same tables.
-`load_data("tabpfn_val", split_seed=1)` gives a second train/test split.
-
-To share the tables, copy the folder to the cluster and make it readable:
+cluster). To share them, copy the folder to the cluster and make it readable:
 
 ```bash
 scp -r .cache/datasets/prior_val <user>@<cluster>:/home/space/datasets/
 ssh <user>@<cluster> chmod -R a+rX /home/space/datasets/prior_val
 ```
-
-## Scoring our model
-
-A finished training run is scored on the same tables, with the same code:
-
-```bash
-uv run python -m tabicl_reproduction.score <run dir> --limit 5    # quick test
-uv run python -m tabicl_reproduction.score <run dir>              # best.pt
-uv run python -m tabicl_reproduction.score <run dir> --weights model  # final weights
-```
-
-This writes `results/tabicl_best.csv` (or `tabicl_model.csv`) and updates
-`results/summary.txt`. Each prediction is the average over 8 column orders,
-because the model depends on the order of the columns. Run it from the repo
-root (locally, or in the container shell on the cluster), not as a SLURM job:
-a job runs in a temporary copy of the repo, so `results/` would be lost. On a
-GPU, add `--device cuda`.
 
 ## Updates
 

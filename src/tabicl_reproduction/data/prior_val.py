@@ -14,9 +14,10 @@ from typing import Any
 import numpy as np
 import torch
 
-from tabicl_reproduction.data import load_data
-from tabicl_reproduction.data.saved_tables import TENSORS
-from tabicl_reproduction.results import _git_commit
+from tabicl_reproduction.utils import git_commit
+
+from .loader import load_data
+from .saved_tables import TENSORS
 
 # v2: random table sizes and shuffled columns, like pretraining.
 VERSION = "v2"
@@ -57,17 +58,17 @@ def save_prior_tables(
         "n_tables": n_tables,
         "seed": seed,
         "prior_settings": PRIOR_SETTINGS,
-        "git_commit": _git_commit(),
+        "git_commit": git_commit(),
         "versions": {p: version(p) for p in ("torch", "numpy", "scikit-learn")},
     }
     (out_dir / "meta.json").write_text(json.dumps(meta, indent=2) + "\n")
 
 
 if __name__ == "__main__":
-    # uv run python -m tabicl_reproduction.prior_val   (once, from the repo root)
+    # uv run python -m tabicl_reproduction.data.prior_val   (once, from the repo root)
     import argparse
 
-    from tabicl_reproduction.data.loader import default_data_dir
+    from .loader import default_data_dir
 
     parser = argparse.ArgumentParser(description="Save the fixed prior tables.")
     parser.add_argument("--out", type=Path, default=default_data_dir() / "prior_val")

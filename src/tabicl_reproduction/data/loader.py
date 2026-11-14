@@ -96,6 +96,9 @@ def load_data(
             (e.g. n_samples, max_features, data_dir, seed, split_seed,
             download). data_dir defaults to default_data_dir() for OpenML
             and default_data_dir() / "prior_val" for the saved tables.
+            For benchmarks, cv=<scikit-learn splitter> gives one table per
+            fold, e.g. load_data("tabpfn_val",
+            cv=StratifiedKFold(5, shuffle=True, random_state=0)).
     """
     name = dataset.replace(" ", "_")
     if name == "prior":

@@ -1,9 +1,11 @@
 import os
+from collections import Counter
 
 import openml
 import pandas as pd
 import pytest
 import torch
+from sklearn.model_selection import StratifiedKFold
 
 from tabicl_reproduction.data import OpenMLDataset
 from tabicl_reproduction.data.benchmarks import TARGET_OVERRIDES
@@ -42,6 +44,35 @@ def test_openml_respects_max_train(cached_dataset):
     )
     sample = ds.load("fake_dataset")
     assert (len(sample.X_train), len(sample.X_test)) == (10, 8)
+
+
+def test_openml_folds(cached_dataset, check_sample):
+    cv = StratifiedKFold(3, shuffle=True, random_state=0)
+    ds = OpenMLDataset(
+        datasets=FAKE, data_dir=cached_dataset, download=False, cv=cv, max_train=20
+    )
+    folds = list(ds)
+    assert [s.split for s in folds] == [0, 1, 2]
+    assert all(s.dataset_id == 1 for s in folds)
+    for sample in folds:
+        check_sample(sample)
+        assert len(sample.y_train) == 20  # 26 or 27 rows, capped
+    # The test folds together are every row once: their labels, mapped back
+    # through class_names, are exactly the original labels.
+    original = pd.read_parquet(cached_dataset / "fake_dataset" / "target.parquet")
+    names = Counter()
+    for sample in folds:
+        assert sample.class_names is not None
+        names.update(sample.class_names[label] for label in sample.y_test.tolist())
+    assert names == Counter(original["target"])
+
+
+def test_openml_class_names_follow_the_labels(cached_dataset):
+    ds = OpenMLDataset(datasets=FAKE, data_dir=cached_dataset, download=False)
+    sample = ds.load("fake_dataset")
+    assert sample.class_names is not None
+    assert sorted(sample.class_names) == ["cat", "dog", "fish"]
+    assert len(sample.class_names) == int(sample.y_train.max()) + 1
 
 
 def test_openml_missing_cache_raises(tmp_path):

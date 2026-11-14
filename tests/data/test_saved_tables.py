@@ -4,7 +4,7 @@ import pytest
 import torch
 
 from tabicl_reproduction.data import load_data
-from tabicl_reproduction.prior_val import PRIOR_SETTINGS, save_prior_tables
+from tabicl_reproduction.data.prior_val import PRIOR_SETTINGS, save_prior_tables
 from tabicl_reproduction.training.configs import PaperModel, PriorData
 
 
@@ -57,7 +57,7 @@ def test_refuses_to_overwrite(tmp_path):
 
 
 def test_missing_tables_and_fixed_splits(tmp_path):
-    with pytest.raises(FileNotFoundError, match="tabicl_reproduction.prior_val"):
+    with pytest.raises(FileNotFoundError, match="tabicl_reproduction.data.prior_val"):
         next(iter(load_data("prior_val", data_dir=tmp_path)))
     with pytest.raises(ValueError, match="fixed splits"):
         load_data("prior_val", data_dir=tmp_path, n_train=10)

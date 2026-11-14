@@ -111,6 +111,12 @@ The training tables come from the synthetic prior, an endless stream.
 | `none` | No evaluation. No `eval/*` metrics, and `best.pt` is never written. |
 | `tabpfn_val` | Scores the model on the real `tabpfn_val` OpenML tables after every epoch. Tables with more classes than `max_classes` are skipped. |
 
+Validation scores the model the same way the final comparison does (the
+model wrapped in `TabICLClassifier`, scored by `evaluation.score_tables`;
+see the README), with one column order instead of 8 to stay fast. So
+`eval/*` can differ slightly from the final numbers of `scripts/compare.py`,
+which also uses 5 folds instead of one split.
+
 The first evaluation downloads the datasets, which takes a while. Each one is
 stored by name, as `<folder>/<name>/features.parquet` and `target.parquet`. The
 folder is `$TABICL_DATASETS_DIR` if set, else `/home/space/datasets/` inside a
@@ -148,7 +154,7 @@ Everything goes to one folder per run, `outputs/<date>/<time>/` (or `out_dir`):
 | `best.pt` | After an epoch whose `monitor` value is the best so far | Model weights only. Needs an evaluator. |
 | `model.pt` | When training finishes, and on a stop | Model weights only (the latest ones). |
 | `metrics.jsonl` | Every `log_every` steps, at each epoch end, and on a stop | One JSON row per log call. |
-| `eval_datasets.jsonl` | After every evaluation | One row per dataset (accuracy, balanced accuracy, log loss, ROC AUC, ECE, time). |
+| `eval_datasets.jsonl` | After every evaluation | One row per dataset (table size, accuracy, balanced accuracy, log loss, ROC AUC, ECE, fit and predict time). |
 | `run.json` | Written at the start, updated at the end | Commit, seed, device, hostname, `resumed_from`, and `end_time`, `status`, `step`, `epoch`, `signal`. |
 | `.hydra/` | At the start | The resolved config and the overrides used. |
 

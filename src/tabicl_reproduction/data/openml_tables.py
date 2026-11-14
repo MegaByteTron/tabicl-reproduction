@@ -3,6 +3,7 @@ import stat
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import openml
 import pandas as pd
@@ -25,6 +26,13 @@ class OpenMLDataset(IterableDataset[TableSample]):
     """Real classification tables from OpenML, cached locally as parquet.
 
     Each dataset is stored by name: <data_dir>/<name>/{features,target}.parquet.
+
+    By default every dataset gives one table, split by n_train/n_test and
+    split_seed. With cv (any scikit-learn splitter, e.g.
+    StratifiedKFold(5, shuffle=True, random_state=0)) it gives one table per
+    fold instead, with sample.split = the fold number; n_train, n_test and
+    split_seed are then not used. Either way the training rows are capped at
+    max_train.
     """
 
     datasets: Mapping[str, int]  # dataset name -> OpenML id
@@ -37,6 +45,8 @@ class OpenMLDataset(IterableDataset[TableSample]):
     # Which random train/test split: 0 is the default split, 1 a second,
     # independent one (TabICLv2 evaluates on two splits per dataset).
     split_seed: int = 0
+    # A scikit-learn splitter (anything with split(X, y)); None: one split.
+    cv: Any = None
 
     def _paths(self, name: str) -> tuple[Path, Path]:
         directory = self.data_dir / name
@@ -98,28 +108,35 @@ class OpenMLDataset(IterableDataset[TableSample]):
                 failures[name] = error
         return failures
 
-    def load(self, name: str) -> TableSample:
-        dataset_id = self.datasets[name]
+    def _labeled_rows(self, name: str) -> tuple[torch.Tensor, torch.Tensor, list[str]]:
+        """Features, integer labels and the name of each label, for all rows."""
         X_df, y_series = self._load_dataset(name)
 
         # Rows without a label can't be trained on or scored, so drop them.
         labeled = y_series.notna().to_numpy()
         X = encode_categoricals(X_df[labeled])
-        codes, _ = pd.factorize(y_series[labeled])
+        codes, label_names = pd.factorize(y_series[labeled])
         y = torch.tensor(codes, dtype=torch.long)
-
-        n_rows = len(X)
-        if n_rows < 2:
+        if len(X) < 2:
             raise ValueError(f"Dataset {name} has fewer than two rows")
+        return X, y, [str(label) for label in label_names]
+
+    # 100_000 is above every OpenML id we use, so no two (dataset, split)
+    # pairs share a seed; split 0 keeps the original seeds.
+    def _seed(self, dataset_id: int, split: int) -> int:
+        return self.seed + dataset_id + 100_000 * split
+
+    def load(self, name: str) -> TableSample:
+        """The dataset as one table, split by n_train, n_test and split_seed."""
+        dataset_id = self.datasets[name]
+        X, y, label_names = self._labeled_rows(name)
 
         # Rows are picked at random from the whole table, so large tables
         # are subsampled rather than truncated.
         n_train, n_test = resolve_split(
-            n_rows, self.n_train, self.n_test, self.max_train
+            len(X), self.n_train, self.n_test, self.max_train
         )
-        # 100_000 is above every OpenML id we use, so no two (dataset, split)
-        # pairs share a seed; split_seed=0 keeps the original splits.
-        seed = self.seed + dataset_id + 100_000 * self.split_seed
+        seed = self._seed(dataset_id, self.split_seed)
         train_idx, test_idx = split_indices(y, n_train, n_test, seed=seed)
         return finalize(
             X[train_idx],
@@ -127,7 +144,42 @@ class OpenMLDataset(IterableDataset[TableSample]):
             X[test_idx],
             y[test_idx],
             dataset_id=dataset_id,
+            split=self.split_seed,
+            label_names=label_names,
         )
+
+    def load_folds(self, name: str) -> Iterator[TableSample]:
+        """The dataset as one table per fold of cv."""
+        dataset_id = self.datasets[name]
+        X, y, label_names = self._labeled_rows(name)
+        for fold, (train, test) in enumerate(self.cv.split(X.numpy(), y.numpy())):
+            train_idx = self._cap_train(y, torch.as_tensor(train), fold, dataset_id)
+            test_idx = torch.as_tensor(test)
+            yield finalize(
+                X[train_idx],
+                y[train_idx],
+                X[test_idx],
+                y[test_idx],
+                dataset_id=dataset_id,
+                split=fold,
+                label_names=label_names,
+            )
+
+    def _cap_train(
+        self, y: torch.Tensor, train_idx: torch.Tensor, fold: int, dataset_id: int
+    ) -> torch.Tensor:
+        """At most max_train of a fold's training rows, picked at random."""
+        n_rows = len(train_idx)
+        if self.max_train is None or n_rows <= self.max_train:
+            return train_idx
+        # Stratified like the default split, so every class stays in training.
+        keep, _ = split_indices(
+            y[train_idx],
+            self.max_train,
+            n_rows - self.max_train,
+            seed=self._seed(dataset_id, fold),
+        )
+        return train_idx[keep]
 
     def __iter__(self) -> Iterator[TableSample]:
         # With DataLoader workers, every worker runs this loop; give each one
@@ -137,7 +189,10 @@ class OpenMLDataset(IterableDataset[TableSample]):
         if worker is not None:
             names = names[worker.id :: worker.num_workers]
         for name in names:
-            yield self.load(name)
+            if self.cv is None:
+                yield self.load(name)
+            else:
+                yield from self.load_folds(name)
 
 
 def _write_parquet(df: pd.DataFrame, path: Path) -> None:
