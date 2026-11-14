@@ -87,6 +87,52 @@ is also not included as it could be done inside the model.
 
 When running the file, it will generate a plot of some random datasets.
 
+## Results
+
+All models (baselines and ours) are scored by the same code in
+`tabicl_reproduction/results.py` and saved as one CSV row per
+(model, table, split): accuracy, balanced accuracy, log loss, ROC AUC and ECE,
+plus the table size, timing and code version.
+
+```python
+from tabicl_reproduction.results import ResultsWriter, load_results
+
+writer = ResultsWriter("results/random_forest.csv", model="random_forest")
+writer.add(table, proba, source="tabpfn_val", table_id="31", split_seed=0, time_s=0.3)
+writer.skip(
+    table, "one class in training", source="tabpfn_val", table_id="40", split_seed=0
+)
+
+df = load_results("results/*.csv")  # all models in one DataFrame
+```
+
+`proba` holds the probabilities for all test rows, one column per training
+class. Test rows whose class never appears in training (label -1) are left
+out of the metrics. The module docstring lists every column.
+
+## Baselines
+
+k-NN, logistic regression, random forest and gradient-boosted trees
+(scikit-learn defaults), each fitted from scratch on every table:
+
+```bash
+uv run python -m tabicl_reproduction.prior_val          # once: 1,600 prior tables
+uv run python -m tabicl_reproduction.baselines --limit 20   # quick test
+uv run python -m tabicl_reproduction.baselines          # full run + summary
+```
+
+`load_data("prior_val")` reads the saved prior tables
+(`.cache/datasets/prior_val` locally, `/home/space/datasets/prior_val` on the
+cluster), so every model is scored on the same tables.
+`load_data("tabpfn_val", split_seed=1)` gives a second train/test split.
+
+To share the tables, copy the folder to the cluster and make it readable:
+
+```bash
+scp -r .cache/datasets/prior_val <user>@<cluster>:/home/space/datasets/
+ssh <user>@<cluster> chmod -R a+rX /home/space/datasets/prior_val
+```
+
 ## Updates
 
 - 2026/08/17: Replace class-embedding with one-hot + linear, which has a bias compared to the nn.Embedding used before, and matches the full model implementation.
