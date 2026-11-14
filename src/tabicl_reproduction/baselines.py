@@ -144,7 +144,7 @@ def run_all(out: Path, limit: int | None = None) -> None:
     if any(out.glob("*.csv")):
         # The writers append, so a second run would add duplicate rows.
         raise SystemExit(f"{out}/ already has results; move or delete them first")
-    prior_dir = default_data_dir("prior_val")
+    prior_dir = default_data_dir() / "prior_val"
     if not (prior_dir / "meta.json").exists():
         raise SystemExit(
             f"No complete prior tables in {prior_dir}; delete the folder if it "
@@ -160,12 +160,12 @@ def run_all(out: Path, limit: int | None = None) -> None:
 
     # Download every OpenML dataset first, so a failure shows up right away
     # instead of after the long prior_val part.
-    openml_ids = tuple(BENCHMARKS["tabpfn_val"].values())[:limit]
-    failures = OpenMLDataset(openml_ids, default_data_dir("tabpfn_val")).download_all()
+    datasets = dict(itertools.islice(BENCHMARKS["tabpfn_val"].items(), limit))
+    failures = OpenMLDataset(datasets, default_data_dir()).download_all()
     if failures:
         raise SystemExit(f"Could not download: {failures}")
 
-    runs = [("tabpfn_val", s, len(openml_ids), None) for s in (0, 1)]
+    runs = [("tabpfn_val", s, len(datasets), None) for s in (0, 1)]
     runs.append(("prior_val", 0, meta["n_tables"], meta["version"]))
     for source, split_seed, n_tables, data_version in runs:
         # prior_val tables have one fixed split; OpenML tables get split_seed.

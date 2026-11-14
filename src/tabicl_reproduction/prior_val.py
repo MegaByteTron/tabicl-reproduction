@@ -68,7 +68,7 @@ if __name__ == "__main__":
     from tabicl_reproduction.data.loader import default_data_dir
 
     parser = argparse.ArgumentParser(description="Save the fixed prior tables.")
-    parser.add_argument("--out", type=Path, default=default_data_dir("prior_val"))
+    parser.add_argument("--out", type=Path, default=default_data_dir() / "prior_val")
     parser.add_argument("--n-tables", type=int, default=N_TABLES)
     args = parser.parse_args()
     save_prior_tables(args.out, args.n_tables)

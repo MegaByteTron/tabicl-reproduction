@@ -8,9 +8,11 @@ import torch
 from tabicl_reproduction.data import OpenMLDataset
 from tabicl_reproduction.data.benchmarks import TARGET_OVERRIDES
 
+FAKE = {"fake_dataset": 1}  # the dataset written by the cached_dataset fixture
+
 
 def test_openml_from_cache(cached_dataset, check_sample, run_model):
-    ds = OpenMLDataset(dataset_ids=(1,), data_dir=cached_dataset, download=False)
+    ds = OpenMLDataset(datasets=FAKE, data_dir=cached_dataset, download=False)
     sample = next(iter(ds))
     check_sample(sample)
     assert (len(sample.X_train), len(sample.X_test)) == (32, 8)
@@ -18,32 +20,32 @@ def test_openml_from_cache(cached_dataset, check_sample, run_model):
 
 
 def test_openml_split_is_reproducible(cached_dataset):
-    ds = OpenMLDataset(dataset_ids=(1,), data_dir=cached_dataset, download=False)
-    assert torch.equal(ds.load(1).X_train, ds.load(1).X_train)
+    ds = OpenMLDataset(datasets=FAKE, data_dir=cached_dataset, download=False)
+    assert torch.equal(ds.load("fake_dataset").X_train, ds.load("fake_dataset").X_train)
 
 
 def test_openml_drops_rows_without_a_label(cached_dataset, check_sample):
-    target_path = cached_dataset / "1" / "target.parquet"
+    target_path = cached_dataset / "fake_dataset" / "target.parquet"
     target = pd.read_parquet(target_path)
     target.loc[[0, 5, 9], "target"] = None  # 3 of the 40 rows are unlabeled
     target.to_parquet(target_path)
 
-    ds = OpenMLDataset(dataset_ids=(1,), data_dir=cached_dataset, download=False)
-    sample = ds.load(1)
+    ds = OpenMLDataset(datasets=FAKE, data_dir=cached_dataset, download=False)
+    sample = ds.load("fake_dataset")
     check_sample(sample)
     assert len(sample.X_train) + len(sample.X_test) <= 37
 
 
 def test_openml_respects_max_train(cached_dataset):
     ds = OpenMLDataset(
-        dataset_ids=(1,), data_dir=cached_dataset, download=False, max_train=10
+        datasets=FAKE, data_dir=cached_dataset, download=False, max_train=10
     )
-    sample = ds.load(1)
+    sample = ds.load("fake_dataset")
     assert (len(sample.X_train), len(sample.X_test)) == (10, 8)
 
 
 def test_openml_missing_cache_raises(tmp_path):
-    ds = OpenMLDataset(dataset_ids=(1,), data_dir=tmp_path, download=False)
+    ds = OpenMLDataset(datasets=FAKE, data_dir=tmp_path, download=False)
     with pytest.raises(FileNotFoundError):
         next(iter(ds))
 
@@ -79,7 +81,7 @@ def strict_umask():
 
 def test_download_makes_everything_readable(tmp_path, fake_openml, strict_umask):
     data_dir = tmp_path / "tabpfn_val"
-    OpenMLDataset(dataset_ids=(5, 6), data_dir=data_dir).download_all()
+    OpenMLDataset(datasets={"five": 5, "six": 6}, data_dir=data_dir).download_all()
 
     paths = [data_dir, *data_dir.rglob("*")]
     assert len(paths) == 7  # root, 2 folders, 4 files
@@ -92,10 +94,10 @@ def test_download_makes_everything_readable(tmp_path, fake_openml, strict_umask)
 
 
 def test_download_skips_cached_datasets(tmp_path, fake_openml):
-    ds = OpenMLDataset(dataset_ids=(5,), data_dir=tmp_path)
+    ds = OpenMLDataset(datasets={"five": 5}, data_dir=tmp_path)
     ds.download_all()
     ds.download_all()
-    ds.load(5)
+    ds.load("five")
     assert fake_openml == [5]  # downloaded only once
 
 
@@ -108,11 +110,13 @@ def test_download_reports_multi_target_dataset(tmp_path, monkeypatch):
         return MultiTarget() if dataset_id == 7 else FakeOpenMLDataset()
 
     monkeypatch.setattr(openml.datasets, "get_dataset", get_dataset)
-    failures = OpenMLDataset(dataset_ids=(5, 7), data_dir=tmp_path).download_all()
+    failures = OpenMLDataset(
+        datasets={"five": 5, "seven": 7}, data_dir=tmp_path
+    ).download_all()
 
-    assert list(failures) == [7]
-    assert "no single target" in str(failures[7])
-    assert (tmp_path / "5" / "features.parquet").exists()  # others still stored
+    assert list(failures) == ["seven"]
+    assert "no single target" in str(failures["seven"])
+    assert (tmp_path / "five" / "features.parquet").exists()  # others still stored
 
 
 def test_download_uses_target_override(tmp_path, monkeypatch):
@@ -126,19 +130,19 @@ def test_download_uses_target_override(tmp_path, monkeypatch):
 
     monkeypatch.setattr(openml.datasets, "get_dataset", lambda _: MultiLabel())
     monkeypatch.setitem(TARGET_OVERRIDES, 7, "a")
-    failures = OpenMLDataset(dataset_ids=(7,), data_dir=tmp_path).download_all()
+    failures = OpenMLDataset(datasets={"seven": 7}, data_dir=tmp_path).download_all()
 
     assert failures == {}
-    features = pd.read_parquet(tmp_path / "7" / "features.parquet")
-    target = pd.read_parquet(tmp_path / "7" / "target.parquet")["target"]
+    features = pd.read_parquet(tmp_path / "seven" / "features.parquet")
+    target = pd.read_parquet(tmp_path / "seven" / "target.parquet")["target"]
     assert list(features.columns) == ["c"]  # the other label "b" is not a feature
     assert target.tolist() == [0, 1, 0, 1]
 
 
 def test_openml_split_seed(cached_dataset):
     def test_rows(**kwargs):
-        ds = OpenMLDataset((1,), cached_dataset, download=False, **kwargs)
-        return ds.load(1).X_test
+        ds = OpenMLDataset(FAKE, cached_dataset, download=False, **kwargs)
+        return ds.load("fake_dataset").X_test
 
     # The second split is a different, reproducible split...
     assert not torch.equal(test_rows(split_seed=0), test_rows(split_seed=1))

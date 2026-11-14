@@ -5,12 +5,27 @@ from pathlib import Path
 from typing import Any
 
 import torch
+from torch import nn
 
 from .trainer import Trainer
 
 # SLURM sends SIGUSR2 shortly before the time limit (submitit asks for it
 # 90 s early) and SIGTERM when it kills the job; Ctrl-C sends SIGINT.
 STOP_SIGNALS = (signal.SIGUSR2, signal.SIGTERM, signal.SIGINT)
+
+
+def load_model(model: nn.Module, path: str | Path, weights: str = "best") -> int:
+    """Load trained weights into model and return the step they were saved at.
+
+    path is a weights file (best.pt, model.pt) or a run directory, in which
+    case <weights>.pt is used. Needs no Trainer, so it also works for inference.
+    """
+    path = Path(path)
+    if path.is_dir():
+        path = path / f"{weights}.pt"
+    state = torch.load(path, map_location="cpu", weights_only=True)
+    model.load_state_dict(state["model"])
+    return state["step"]
 
 
 def _atomic_save(obj: Any, path: Path) -> None:
@@ -105,6 +120,7 @@ class Checkpointer:
         def request_stop(signum: int, frame: Any) -> None:
             print(f"Received {signal.Signals(signum).name}, stopping after this step.")
             trainer.stop_requested = True
+            trainer.stop_reason = signal.Signals(signum).name
 
         for sig in STOP_SIGNALS:
             signal.signal(sig, request_stop)

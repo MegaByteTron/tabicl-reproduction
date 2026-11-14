@@ -83,16 +83,24 @@ def test_unknown_dataset_name():
 
 def test_default_data_dir_env_var(monkeypatch, tmp_path):
     monkeypatch.setenv("TABICL_DATASETS_DIR", str(tmp_path))
-    assert default_data_dir("tabpfn_val") == tmp_path / "tabpfn_val"
+    assert default_data_dir() == tmp_path
 
 
-def test_default_data_dir_cluster_and_local(monkeypatch, tmp_path):
+def test_default_data_dir_local(monkeypatch, tmp_path):
     monkeypatch.delenv("TABICL_DATASETS_DIR", raising=False)
+    monkeypatch.delenv("SLURM_JOB_ID", raising=False)
+    # Not in a SLURM job: local cache, even if the cluster folder exists.
     monkeypatch.setattr(loader_module, "CLUSTER_DATASETS_DIR", tmp_path)
-    assert default_data_dir("tabpfn_val") == tmp_path / "tabpfn_val"
+    assert default_data_dir() == loader_module.LOCAL_DATASETS_DIR
 
+
+def test_default_data_dir_cluster(monkeypatch, tmp_path):
+    monkeypatch.delenv("TABICL_DATASETS_DIR", raising=False)
+    monkeypatch.setenv("SLURM_JOB_ID", "123")
+    monkeypatch.setattr(loader_module, "CLUSTER_DATASETS_DIR", tmp_path)
+    assert default_data_dir() == tmp_path
+
+    # In a job but the shared folder isn't mounted: fail instead of using .cache.
     monkeypatch.setattr(loader_module, "CLUSTER_DATASETS_DIR", tmp_path / "missing")
-    assert (
-        default_data_dir("tabpfn_val")
-        == loader_module.LOCAL_DATASETS_DIR / "tabpfn_val"
-    )
+    with pytest.raises(FileNotFoundError, match="not visible"):
+        default_data_dir()
