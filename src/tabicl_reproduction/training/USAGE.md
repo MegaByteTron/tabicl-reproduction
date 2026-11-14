@@ -6,19 +6,19 @@ repo root. The short guide is in [README.md](README.md); this page lists every
 option.
 
 ```bash
-uv run python src/tabicl_reproduction/training/train.py [overrides ...]
+uv run python scripts/train.py [overrides ...]
 ```
 
 Add `--cfg job` to any command to print the fully resolved config instead of
 training. Use it to check what an override does and to see every default.
 
 ```bash
-uv run python src/tabicl_reproduction/training/train.py model=tiny optimizer=muon --cfg job
+uv run python scripts/train.py model=tiny optimizer=muon --cfg job
 ```
 
 ## Quick recipes
 
-`...` stands for the command above (`uv run python src/tabicl_reproduction/training/train.py`).
+`...` stands for the command above (`uv run python scripts/train.py`).
 
 ```bash
 # Smoke test (seconds): tiny model, no benchmark evaluation
@@ -111,8 +111,11 @@ The training tables come from the synthetic prior, an endless stream.
 | `none` | No evaluation. No `eval/*` metrics, and `best.pt` is never written. |
 | `tabpfn_val` | Scores the model on the real `tabpfn_val` OpenML tables after every epoch. Tables with more classes than `max_classes` are skipped. |
 
-The first evaluation downloads the datasets into `.cache/datasets/` (or
-`$TABICL_DATASETS_DIR`), which takes a while.
+The first evaluation downloads the datasets, which takes a while. Each one is
+stored by name, as `<folder>/<name>/features.parquet` and `target.parquet`. The
+folder is `$TABICL_DATASETS_DIR` if set, else `/home/space/datasets/` inside a
+SLURM job (the run stops with an error if that folder isn't mounted), else
+`.cache/datasets/`.
 
 ### `cfg/wandb=` (default off)
 
@@ -126,7 +129,14 @@ the run's **Files** tab, and `best.pt` and `model.pt` to a model artifact,
 `model-<run id>`, in its **Artifacts** tab. `last.pt` stays on disk only.
 Download a model with `wandb artifact get <entity>/<project>/model-<run id>:latest`.
 
-Cluster jobs (`cfg/job=...`) are not part of this branch; see #6.
+### `cfg/job=` (default off)
+
+`cfg/job=<preset>` submits the same command to the SLURM cluster instead of
+running it locally. Presets: `test`, `gpu_2h`, `gpu_5h`, `sweep`. Change a
+preset's resources with `cfg.job.<key>=...`, for example
+`cfg.job.slurm_params.cpus_per_task=8`. See
+[cluster/README.md](../../../cluster/README.md) for what they mean and how to
+run on the cluster.
 
 ## What a run writes
 

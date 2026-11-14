@@ -6,7 +6,10 @@ import torch
 
 @pytest.fixture
 def cached_dataset(tmp_path):
-    """Write a fake OpenML dataset (id 1, 40 rows) to disk; returns its folder."""
+    """Write a fake OpenML dataset ("fake_dataset", id 1, 40 rows) to disk.
+
+    Returns the data folder that holds it.
+    """
     rng = np.random.default_rng(0)
     n = 40
     X = pd.DataFrame(
@@ -17,9 +20,10 @@ def cached_dataset(tmp_path):
     )
     X.loc[3, "a"] = np.nan
     y = pd.Series(rng.choice(["cat", "dog", "fish"], size=n))
-    (tmp_path / "1").mkdir()
-    X.to_parquet(tmp_path / "1" / "features.parquet")
-    y.to_frame(name="target").to_parquet(tmp_path / "1" / "target.parquet")
+    folder = tmp_path / "fake_dataset"
+    folder.mkdir()
+    X.to_parquet(folder / "features.parquet")
+    y.to_frame(name="target").to_parquet(folder / "target.parquet")
     return tmp_path
 
 

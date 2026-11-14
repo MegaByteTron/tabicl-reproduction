@@ -16,17 +16,34 @@ CLUSTER_DATASETS_DIR = Path("/home/space/datasets")
 LOCAL_DATASETS_DIR = Path(".cache/datasets")
 
 
-def default_data_dir(benchmark: str) -> Path:
-    """Where a benchmark is stored: <root>/<benchmark>.
+def on_cluster() -> bool:
+    """True inside a SLURM job, including inside its apptainer container.
 
-    The root is $TABICL_DATASETS_DIR if set, otherwise /home/space/datasets
-    when it exists (on the cluster), otherwise .cache/datasets.
+    The login node has no python, so all our code on the cluster runs in a job.
+    """
+    return "SLURM_JOB_ID" in os.environ
+
+
+def default_data_dir() -> Path:
+    """Folder that holds every OpenML dataset, each in <folder>/<name>.
+
+    $TABICL_DATASETS_DIR if set, otherwise /home/space/datasets in a SLURM
+    job, otherwise .cache/datasets.
     """
     root = os.environ.get("TABICL_DATASETS_DIR")
-    if root is None:
-        cluster = CLUSTER_DATASETS_DIR.is_dir()
-        root = CLUSTER_DATASETS_DIR if cluster else LOCAL_DATASETS_DIR
-    return Path(root) / benchmark
+    if root is not None:
+        return Path(root)
+    if not on_cluster():
+        return LOCAL_DATASETS_DIR
+    # Fail loudly: falling back to .cache would download into the job's
+    # per-commit worktree instead of the shared folder.
+    if not CLUSTER_DATASETS_DIR.is_dir():
+        raise FileNotFoundError(
+            f"In a SLURM job but {CLUSTER_DATASETS_DIR} is not visible. Bind it "
+            f"into the container (-B {CLUSTER_DATASETS_DIR}) or set "
+            "TABICL_DATASETS_DIR."
+        )
+    return CLUSTER_DATASETS_DIR
 
 
 type Transformation = Callable[[TableSample], TableSample]
@@ -74,15 +91,15 @@ def load_data(
         prefetch_factor: tables each worker prepares ahead.
         **kwargs: passed to PriorDataset or OpenMLDataset
             (e.g. n_samples, max_features, data_dir, seed, download).
-            data_dir defaults to default_data_dir(dataset).
+            data_dir defaults to default_data_dir().
     """
     name = dataset.replace(" ", "_")
     if name == "prior":
         source = PriorDataset(n_train=n_train, n_test=n_test, **kwargs)
     elif name in BENCHMARKS:
-        kwargs.setdefault("data_dir", default_data_dir(name))
+        kwargs.setdefault("data_dir", default_data_dir())
         source = OpenMLDataset(
-            dataset_ids=tuple(BENCHMARKS[name].values()),
+            datasets=BENCHMARKS[name],
             n_train=n_train,
             n_test=n_test,
             **kwargs,
