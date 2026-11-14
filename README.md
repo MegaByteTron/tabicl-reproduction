@@ -133,6 +133,23 @@ scp -r .cache/datasets/prior_val <user>@<cluster>:/home/space/datasets/
 ssh <user>@<cluster> chmod -R a+rX /home/space/datasets/prior_val
 ```
 
+## Scoring our model
+
+A finished training run is scored on the same tables, with the same code:
+
+```bash
+uv run python -m tabicl_reproduction.score <run dir> --limit 5    # quick test
+uv run python -m tabicl_reproduction.score <run dir>              # best.pt
+uv run python -m tabicl_reproduction.score <run dir> --weights model  # final weights
+```
+
+This writes `results/tabicl_best.csv` (or `tabicl_model.csv`) and updates
+`results/summary.txt`. Each prediction is the average over 8 column orders,
+because the model depends on the order of the columns. Run it from the repo
+root (locally, or in the container shell on the cluster), not as a SLURM job:
+a job runs in a temporary copy of the repo, so `results/` would be lost. On a
+GPU, add `--device cuda`.
+
 ## Updates
 
 - 2026/08/17: Replace class-embedding with one-hot + linear, which has a bias compared to the nn.Embedding used before, and matches the full model implementation.
