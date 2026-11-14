@@ -17,6 +17,7 @@ TINY_RUN = [
     "steps_per_epoch=2",
     "accum_steps=2",
     "data.n_samples=64",
+    "data.max_samples=null",
     "data.max_features=4",
     "log_every=1",
 ]

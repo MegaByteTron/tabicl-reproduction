@@ -27,10 +27,12 @@ def test_save_and_load_back(tmp_path, check_sample):
     assert_same(first, second)  # identical every time
     for _, tensors in first:
         check_sample(tensors)
-        assert len(tensors[0]) == 819 and len(tensors[2]) == 205  # 1024, 80/20
+        n_rows = len(tensors[0]) + len(tensors[2])
+        assert 400 <= n_rows <= 2560
+        assert len(tensors[0]) == round(0.8 * n_rows)  # 80/20 split
 
     meta = json.loads((tmp_path / "meta.json").read_text())
-    assert meta["n_tables"] == 3 and meta["version"] == "v1"
+    assert meta["n_tables"] == 3 and meta["version"] == "v2"
 
 
 def test_same_seed_gives_same_tables(tmp_path):
