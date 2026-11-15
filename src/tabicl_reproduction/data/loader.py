@@ -9,6 +9,7 @@ from torch.utils.data import DataLoader, IterableDataset
 from .benchmarks import BENCHMARKS
 from .openml_tables import OpenMLDataset
 from .preprocessing import Size
+from .saved_tables import SavedTablesDataset
 from .synthetic import PriorDataset
 from .table import TableSample
 
@@ -77,6 +78,8 @@ def load_data(
 
     Args:
         dataset: "prior" samples tables from the prior (endless stream).
+            "prior_val" reads the fixed, saved prior tables used for
+            evaluation (see prior_val.py); their splits are fixed.
             Any name in BENCHMARKS (e.g. "tabpfn_val", the TabPFNv2
             classification development datasets) reads those OpenML
             datasets from disk. Each sample has sample.dataset_id.
@@ -90,12 +93,18 @@ def load_data(
             PyTorch gives every worker its own random, numpy and torch seed.
         prefetch_factor: tables each worker prepares ahead.
         **kwargs: passed to PriorDataset or OpenMLDataset
-            (e.g. n_samples, max_features, data_dir, seed, download).
-            data_dir defaults to default_data_dir().
+            (e.g. n_samples, max_features, data_dir, seed, split_seed,
+            download). data_dir defaults to default_data_dir() for OpenML
+            and default_data_dir() / "prior_val" for the saved tables.
     """
     name = dataset.replace(" ", "_")
     if name == "prior":
         source = PriorDataset(n_train=n_train, n_test=n_test, **kwargs)
+    elif name == "prior_val":
+        if n_train is not None or n_test is not None:
+            raise ValueError("prior_val tables are saved with fixed splits")
+        kwargs.setdefault("data_dir", default_data_dir() / name)
+        source = SavedTablesDataset(**kwargs)
     elif name in BENCHMARKS:
         kwargs.setdefault("data_dir", default_data_dir())
         source = OpenMLDataset(
@@ -105,7 +114,7 @@ def load_data(
             **kwargs,
         )
     else:
-        options = ", ".join(repr(n) for n in ["prior", *BENCHMARKS])
+        options = ", ".join(repr(n) for n in ["prior", "prior_val", *BENCHMARKS])
         raise ValueError(f"Unknown dataset {dataset!r}, expected one of {options}")
 
     if transformation is not None:

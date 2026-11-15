@@ -110,6 +110,29 @@ df = load_results("results/*.csv")  # all models in one DataFrame
 class. Test rows whose class never appears in training (label -1) are left
 out of the metrics. The module docstring lists every column.
 
+## Baselines
+
+k-NN, logistic regression, random forest and gradient-boosted trees
+(scikit-learn defaults), each fitted from scratch on every table:
+
+```bash
+uv run python -m tabicl_reproduction.prior_val          # once: 1,600 prior tables
+uv run python -m tabicl_reproduction.baselines --limit 20   # quick test
+uv run python -m tabicl_reproduction.baselines          # full run + summary
+```
+
+`load_data("prior_val")` reads the saved prior tables
+(`.cache/datasets/prior_val` locally, `/home/space/datasets/prior_val` on the
+cluster), so every model is scored on the same tables.
+`load_data("tabpfn_val", split_seed=1)` gives a second train/test split.
+
+To share the tables, copy the folder to the cluster and make it readable:
+
+```bash
+scp -r .cache/datasets/prior_val <user>@<cluster>:/home/space/datasets/
+ssh <user>@<cluster> chmod -R a+rX /home/space/datasets/prior_val
+```
+
 ## Updates
 
 - 2026/08/17: Replace class-embedding with one-hot + linear, which has a bias compared to the nn.Embedding used before, and matches the full model implementation.
