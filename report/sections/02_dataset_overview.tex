@@ -43,7 +43,6 @@ many domains, for example medicine (\dataset{heart-c}), credit
 which we count as categorical (311 of 1,826 columns); numerically coded
 categories are not counted. 12 datasets have missing values.
 
-\paragraph{Examples.}
 \Cref{fig:example_tables}, made with our \emph{show} function, shows three
 prior and three real tables, each projected onto its first two principal
 components. The prior tables differ a lot: in prior table~1 (middle) the
@@ -104,7 +103,6 @@ columns from the features. Prior rows are generated in random order, so the
 first 80\% of a table are a random training set. The 1,600 saved prior tables
 use a different random seed than pretraining.
 
-\paragraph{Checks.}
 We checked every evaluation table for problems that could distort the
 evaluation (\Cref{tab:quality}). The most common problem on the OpenML
 datasets is test rows that also appear among the training rows: 22 of 57
