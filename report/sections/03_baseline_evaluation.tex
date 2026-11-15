@@ -266,13 +266,15 @@ why it does not lead on balanced accuracy.
 \subsection{Non-technical view}\label{sec:nontechnical}
 % What makes the task easy or hard, in plain words?
 
-Imagine a spreadsheet of patients in which a column saying whether each
-patient is ill has to be filled in for new patients. Such spreadsheets are
-usually small and each one is different, while deep learning normally needs
-much data for a single problem. The task gets harder with many possible
-answers, rare answers or few example rows, which is where all models did
-worst (\Cref{sec:categories,sec:failures}). Our model therefore practises
-beforehand on about 200{,}000 artificial spreadsheets built from random
-rules. This preparation is the expensive part; afterwards, it fills in a new
-spreadsheet at once, without any training for it, as long as real
-spreadsheets resemble the ones it practised on.
+In plain words, the task is to fill in a missing column of a spreadsheet,
+such as whether a patient is ill, from the rows where it is known. It is
+easy when a few columns clearly decide the answer, when there are many
+example rows and when there are only two possible answers. It is hard when
+there are many possible answers, when one answer is rare, when there are
+only a few example rows, or when identical rows have different answers, as
+in \dataset{Titanic} (\Cref{sec:data_quality}); our results show the same
+pattern (\Cref{sec:categories,sec:failures}). Classical methods learn every
+spreadsheet from scratch. Our model instead practised beforehand on about
+200{,}000 invented spreadsheets, like a person who has seen many similar
+cases, and fills in a new one at a glance. This experience only helps as far
+as real spreadsheets resemble the invented ones.

@@ -6,6 +6,19 @@
 % Moved here from 1.1.1 (how the prior generates tables), to use in this
 % section. 1.1.1 now only describes what the generated tables look like and
 % refers here with \Cref{sec:method}.
+% Also moved from section 1 (1.3, 1.4): how the model handles different
+% shapes, and how our prior differs from the paper's.
+% Every column is embedded with the same weights, a row-wise transformer
+% merges any number of columns into a fixed-size row vector, and in-context
+% learning attends over any number of training rows. The column order still
+% matters: each column is embedded together with the columns one and three
+% places further on, and the row-wise transformer encodes the column
+% positions; the prior therefore shuffles the columns of every table
+% (App.~E.13).
+% Our prior differs from the paper's: it draws the number of features
+% log-uniformly instead of uniformly, allows up to 100 categories instead of
+% fewer than 10 (App.~E.3), and has no filter for graphs in which features
+% and label share no ancestor (Sec.~5).
 % The model is pretrained only on synthetic tables, drawn from a \emph{prior}:
 % a program that defines a distribution over datasets
 % \citep{muller2022pfn,qu2026tabiclv2}. We use the prior of \nanotabicl{}
