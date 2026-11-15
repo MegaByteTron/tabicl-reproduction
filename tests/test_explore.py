@@ -81,6 +81,7 @@ def test_explore_command(tmp_path, monkeypatch):
     summary = summarize(df)
     assert summary.loc[("prior_val", 0), "tables"] == 1
     assert summary.loc[("prior_val", 0), "duplicate_row_share"] == 0.5  # 1 of 2
+    assert summary.loc[("prior_val", 0), "duplicates_other_label"] == 0
     assert summary.loc[("prior_val", 0), "abs_z_over_10"] == 1
     assert summary.loc[("tabpfn_val", 0), "missing_values"] == 1
     assert math.isnan(summary.loc[("prior_val", 0), "missing_values"])

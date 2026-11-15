@@ -100,7 +100,10 @@ def summarize(df: pd.DataFrame) -> pd.DataFrame:
         {
             "tables": 1,
             "duplicates": has("duplicate_test_rows"),
-            "duplicates_same_label": has("duplicate_test_rows_same_label"),
+            # Some duplicate test row whose label no identical training row has.
+            "duplicates_other_label": (
+                df["duplicate_test_rows"] > df["duplicate_test_rows_same_label"]
+            ).astype(float),
             "unseen_class": has("unseen_test_rows"),
             "one_value_column": has("one_value_columns"),
             "majority_over_90%": has("majority_share", 0.9),
