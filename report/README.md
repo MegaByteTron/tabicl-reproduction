@@ -15,10 +15,10 @@ lists that section's guiding questions as comments.
 
 | File | Section | Points |
 |---|---|---|
-| `01_introduction.tex` | Introduction (short) | – |
 | `02_dataset_overview.tex` | Dataset overview | 4 |
 | `03_baseline_evaluation.tex` | Baseline and evaluation | 3 |
 | `04_discussion.tex` | Discussion | 2 |
+| `05_ai_usage.tex` | Use of AI tools (required) | – |
 
 Rules from the task sheet: at most 10 pages, no code in the report, submit
 the PDF on ISIS, and tag the submitted commit `ms1`.

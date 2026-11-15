@@ -1,4 +1,4 @@
-\documentclass[10pt,a4paper,twoside]{article}
+\documentclass[10pt,a4paper,oneside]{article}
 \usepackage[a4paper,top=20mm,bottom=20mm,outer=5cm]{geometry}
 \usepackage[utf8]{inputenc}
 \usepackage[english]{babel}
@@ -22,6 +22,9 @@
 \usepackage{xcolor}
 % Links as dark blue text instead of hyperref's default coloured boxes.
 \hypersetup{colorlinks, allcolors=blue!50!black}
+\usepackage{amssymb}     % \mathbb{R} and other math symbols
+\usepackage{flafter}     % floats never appear before their place in the text
+\usepackage{placeins}    % \FloatBarrier keeps floats inside a subsection
 \usepackage{booktabs}    % \toprule, \midrule, \bottomrule in tables
 \usepackage{subcaption}  % subfigures (a), (b) side by side
 \graphicspath{{figures/}}
@@ -33,10 +36,10 @@
 
 % One file per section, in sections/, following the task sheet's report part.
 % At most 10 pages, no code.
-\input{sections/01_introduction}
 \input{sections/02_dataset_overview}   % 4 points
 \input{sections/03_baseline_evaluation} % 3 points
 \input{sections/04_discussion}         % 2 points
+\input{sections/05_ai_usage}           % required: how we used AI
 
 % Lists every entry of the .bib, cited or not. Remove once the text cites them.
 \nocite{*}
