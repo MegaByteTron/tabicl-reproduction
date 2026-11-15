@@ -16,17 +16,25 @@ COLUMNS = {
     "balanced_accuracy": r"Bal.\ acc.\ $\uparrow$",
     "log_loss": r"Log loss $\downarrow$",
     "ece": r"ECE $\downarrow$",
+    "rank": r"Rank $\downarrow$",
 }
 SOURCE_NAMES = {
-    "prior_val": r"Prior tables (\texttt{prior\_val})",
+    "prior_val": r"Prior tables (\textit{prior\_val})",
     "tabpfn_val": r"OpenML tables (\tabpfnval{})",
 }
 
 
 def mean_scores(df: pd.DataFrame, source: str) -> tuple[pd.DataFrame, int]:
     """Mean of every metric per model (rows) on source, and the table count."""
-    means = {metric: per_table(df, source, metric).mean() for metric in COLUMNS}
-    return pd.DataFrame(means), len(per_table(df, source))
+    means = {
+        metric: per_table(df, source, metric).mean()
+        for metric in COLUMNS
+        if metric != "rank"
+    }
+    # Mean rank by ROC AUC, 1 = best on a table (as in comparison.py).
+    roc_auc = per_table(df, source)
+    means["rank"] = roc_auc.rank(axis=1, ascending=False).mean()
+    return pd.DataFrame(means), len(roc_auc)
 
 
 def results_table(df: pd.DataFrame, outfile: str | Path) -> Path:
@@ -50,10 +58,14 @@ def results_table(df: pd.DataFrame, outfile: str | Path) -> Path:
         for model, row in means.iterrows():
             cells = [model_label(str(model))]
             for metric, value in row.items():
-                column = means[metric].round(3)
-                best = column.min() if metric in LOWER_IS_BETTER else column.max()
-                text = f"{value:.3f}"
-                cells.append(rf"\textbf{{{text}}}" if round(value, 3) == best else text)
+                digits = 2 if metric == "rank" else 3
+                column = means[metric].round(digits)
+                lower = metric in (*LOWER_IS_BETTER, "rank")
+                best = column.min() if lower else column.max()
+                text = f"{value:.{digits}f}"
+                cells.append(
+                    rf"\textbf{{{text}}}" if round(value, digits) == best else text
+                )
             lines.append(" & ".join(cells) + r" \\")
     lines += [r"\bottomrule", r"\end{tabular}", ""]
 

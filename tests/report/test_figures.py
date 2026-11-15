@@ -5,13 +5,12 @@ from comparison import (
     per_table,
     plot_by_category,
     plot_differences,
-    plot_mean_rank,
     plot_per_dataset,
     table_info,
 )
 from confusion import ConfusionCase, plot_confusion_matrices
 from make_figures import win_and_loss
-from training_curves import plot_auc_over_training, plot_training_curves
+from training_curves import plot_training
 
 
 def test_per_table_averages_splits_and_keeps_common_tables(results):
@@ -32,21 +31,17 @@ def test_best_baseline_is_never_ours(results):
     assert best_baseline(scores) in ("random_forest", "knn")
 
 
-@pytest.mark.parametrize(
-    "plot", [plot_differences, plot_mean_rank, plot_per_dataset, plot_by_category]
-)
+@pytest.mark.parametrize("plot", [plot_differences, plot_per_dataset, plot_by_category])
 def test_comparison_plots_write_pdf(tmp_path, results, plot):
     out = tmp_path / "figure.pdf"
     plot(results, out)
     assert out.stat().st_size > 0
 
 
-def test_run_plots_write_pdf(tmp_path, results, run_logs):
+def test_training_plot_writes_pdf(tmp_path, results, run_logs):
     metrics, evals = run_logs
-    plot_training_curves(metrics, tmp_path / "loss.pdf")
-    plot_auc_over_training(evals, results, tmp_path / "auc.pdf")
-    assert (tmp_path / "loss.pdf").stat().st_size > 0
-    assert (tmp_path / "auc.pdf").stat().st_size > 0
+    plot_training(metrics, evals, results, tmp_path / "training.pdf")
+    assert (tmp_path / "training.pdf").stat().st_size > 0
 
 
 def test_confusion_matrices_write_pdf(tmp_path):

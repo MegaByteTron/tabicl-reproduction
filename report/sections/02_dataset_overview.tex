@@ -158,14 +158,13 @@ evaluation; \Cref{tab:quality} lists how many tables have each.
 
 \begin{itemize}
   \item \textbf{Duplicates:} 22 of the 57 OpenML datasets and 497 prior
-    tables have test rows that also occur among the training rows (14\,\%
-    and 20\,\% of all test rows). This is not a split error: tables with few
-    discrete features repeat rows naturally (\dataset{Titanic} has only 14
-    distinct rows), and some datasets contain many repeated rows to begin
-    with (\dataset{mc1}). Duplicates do not always give the answer away: in
-    \dataset{Titanic}, most repeated rows occur in the training rows with
-    both labels, so no model can exceed 78\,\% accuracy. We keep all
-    duplicates, since removing them would change the benchmark.
+    tables have test rows that also occur among the training rows. This is
+    not a split error: some tables repeat rows naturally (\dataset{Titanic}
+    has only 14 distinct rows) or contain many repeated rows to begin with
+    (\dataset{mc1}). Duplicates do not always give the answer away: in
+    \dataset{Titanic}, repeated rows often occur with both labels, so no
+    model can exceed 78\,\% accuracy. We keep them, since removing them
+    would change the benchmark.
   \item \textbf{Class imbalance:} in 6 OpenML datasets, the largest class
     holds more than 90\,\% of the training rows (up to 99.3\,\% in
     \dataset{mc1}), so always predicting it already gives over 90\,\%
@@ -173,18 +172,17 @@ evaluation; \Cref{tab:quality} lists how many tables have each.
     (\Cref{sec:metrics}). The prior is more balanced (median share of the
     largest class 0.39 vs.\ 0.56), partly because its tables have more
     classes.
-  \item \textbf{Outliers:} we measure each test value in standard deviations
-    of its column's training rows ($z$), as the model scales its input.
-    Values with $|z| > 100$, which the model clips, occur in 2 OpenML
-    datasets and 54 prior tables, and reach about $10^8$ in the prior. Not
-    every large $|z|$ is an error: in a 0/1 column with a single 1 among
-    2,048 training rows, a test value of 1 has $|z| \approx 45$.
+  \item \textbf{Outliers:} measured in standard deviations of the column's
+    training rows ($|z|$), as the model scales its input, values above 100,
+    which the model clips, occur in 2 OpenML datasets and 54 prior tables.
+    Not every large $|z|$ is an error: a single 1 in a 0/1 column with
+    2,048 training rows has $|z| \approx 45$.
   \item \textbf{Missing values:} 12 OpenML datasets have them, up to
     72\,\% of the cells in \dataset{cjs}; the prior produces none (how we
-    fill them: \Cref{sec:pipeline}).
+    fill them: \Cref{sec:preprocessing}).
   \item \textbf{Constant columns and unseen classes:} 244 prior tables and
     8 OpenML datasets have a column with a single value in the training
-    rows, which carries no information (\Cref{sec:pipeline}). In 9 prior
+    rows, which carries no information (\Cref{sec:preprocessing}). In 9 prior
     tables, a class occurs only in the test rows; the \tabicl{} prior
     discards such tables (\citealt{qu2026tabiclv2}, App.~E.13), while we
     keep them and leave these rows out of the metrics. No table has only one
@@ -197,8 +195,6 @@ evaluation; \Cref{tab:quality} lists how many tables have each.
 % Normalization, categorical features, missing values: what and why.
 % Which transformation we pass to load_data.
 % Can the model handle tables of different size or shape?
-
-\subsubsection{Pipeline}\label{sec:pipeline}
 
 The tables pass through four steps. Everything estimated from the data
 (means, standard deviations, the label mapping) comes from the training rows
@@ -230,15 +226,15 @@ gives a missing category its own code (we fill it with the mean code, which
 is not a real category), shrinks values beyond 4 standard deviations and, in
 half of its ensemble members, applies a power transform; we leave both out.
 
-\subsubsection{Different sizes and shapes}\label{sec:sizes_shapes}
-
-One model handles every table in \Cref{fig:table_shapes}, because its
-weights are shared over rows and columns (\citealt{qu2026tabiclv2}, Sec.~3;
-\Cref{sec:method}). There are two limits. The output has 10 classes;
-\tabicl{} splits a label with more classes into several digits with at most
-10 values each (App.~A.3), which we do not implement. And the 21 small and 3
-wide OpenML datasets of \Cref{sec:real_tables} lie outside the sizes the
-model was trained on.
+The model accepts tables with any number of rows and columns: it
+applies the same weights to every column and every row, and it reads the
+training rows as a context of any length (\Cref{sec:method}). Two limits
+remain. Its output layer has 10 classes, so tables with more classes cannot
+be predicted; \tabicl{} handles them by splitting the label into several
+parts with at most 10 values each (\citealt{qu2026tabiclv2}, App.~A.3),
+which we do not implement. And the 21 small and 3 wide OpenML datasets lie
+outside the sizes the model saw in training (\Cref{sec:examples}), so on
+them it has to extrapolate.
 
 \subsection{Synthetic vs.\ real data and questions about the data}\label{sec:questions}
 % How similar are the synthetic tables to real ones?

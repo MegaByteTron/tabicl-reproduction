@@ -1,11 +1,10 @@
-"""Figures from one training run: loss curves and ROC AUC over training.
+"""The figure of one training run: loss curves and ROC AUC over training.
 
-    uv run python report/plots/training_curves.py <run folder> [results CSVs]
+    uv run python report/plots/training_curves.py <run folder> "results/*.csv"
 
 The run folder is the one holding metrics.jsonl and eval_datasets.jsonl
-(outputs/runs/<date>/<time>/). Writes report/figures/training_curves.pdf and,
-with results CSVs (e.g. "results/*.csv"), roc_auc_over_training.pdf.
-make_figures.py makes these together with all other figures.
+(outputs/runs/<date>/<time>/). Writes report/figures/training.pdf.
+make_figures.py makes it together with all other figures.
 """
 
 import argparse
@@ -38,53 +37,44 @@ def load_run(run_dir: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
     return metrics, evals
 
 
-def plot_training_curves(metrics: pd.DataFrame, outfile: Path, smooth: int = 20):
-    """Training loss (prior) and log loss on tabpfn_val over the steps.
-
-    The dotted line marks the step with the lowest validation log loss
-    (saved as best.pt). Validation loss rising while the training loss
-    keeps falling would mean overfitting.
-    """
+def draw_training_loss(ax, metrics: pd.DataFrame, smooth: int = 20) -> None:
+    """Training loss on the prior: raw values faintly (each is one window of
+    tables, so noisy) behind a moving average."""
     train = metrics.dropna(subset=["train/loss"])
+    ax.plot(train["step"], train["train/loss"], color=COLORS[0], alpha=0.2)
+    smoothed = train["train/loss"].rolling(smooth, min_periods=1).mean()
+    ax.plot(train["step"], smoothed, color=COLORS[0], label="moving average")
+    ax.set(xlabel="Optimizer step", ylabel="Training loss (prior)")
+    ax.legend()
+
+
+def draw_validation_loss(ax, metrics: pd.DataFrame) -> None:
+    """Log loss on tabpfn_val; the dotted line marks the step with the lowest
+    value (saved as best.pt). Rising while the training loss keeps falling
+    would mean overfitting."""
     evals = metrics.dropna(subset=["eval/log_loss"])
     best_step = evals.loc[evals["eval/log_loss"].idxmin(), "step"]
-
-    use_style()
-    # sharex: both panels use the same step range, so they line up.
-    fig, (left, right) = plt.subplots(1, 2, figsize=(TEXT_WIDTH_IN, 1.9), sharex=True)
-
-    # Raw values are noisy (one window of tables each); show them faintly
-    # behind a moving average.
-    left.plot(train["step"], train["train/loss"], color=COLORS[0], alpha=0.2)
-    smoothed = train["train/loss"].rolling(smooth, min_periods=1).mean()
-    left.plot(train["step"], smoothed, color=COLORS[0], label="moving average")
-    left.set(xlabel="Optimizer step", ylabel="Training loss (prior)")
-    left.legend()
-
-    right.plot(evals["step"], evals["eval/log_loss"], color=COLORS[1])
-    right.axvline(best_step, color=INK_MUTED, linestyle=":", label="best.pt")
+    ax.plot(evals["step"], evals["eval/log_loss"], color=COLORS[1])
+    ax.axvline(best_step, color=INK_MUTED, linestyle=":", label="best.pt")
     # The first evals are far higher; zoom in on the rest, where overfitting
     # would show.
     late = evals.loc[evals["step"] >= 0.05 * evals["step"].max(), "eval/log_loss"]
     margin = 0.1 * (late.max() - late.min())
-    right.set(
+    ax.set(
         xlabel="Optimizer step",
         ylabel=r"Log loss ($\mathtt{tabpfn\_val}$)",
         ylim=(late.min() - margin, late.max() + margin),
     )
-    right.legend(loc="upper center")  # the free area above the curve
-
-    fig.tight_layout()
-    save(fig, outfile)
+    ax.legend(loc="upper center")  # the free area above the curve
 
 
-def plot_auc_over_training(evals: pd.DataFrame, results: pd.DataFrame, outfile: Path):
+def draw_auc(ax, evals: pd.DataFrame, results: pd.DataFrame) -> None:
     """Our mean ROC AUC on tabpfn_val per eval step, baselines as lines.
 
     As in nanoTabPFN's plot_runs. evals comes from eval_datasets.jsonl
     (split 0); the baselines are averaged over the same tables of split 0
     from the results CSVs. Our scored checkpoint from the CSVs (averaged over
-    column orders) is drawn as a single point, if present.
+    column orders) is drawn as a star, if present.
     """
     curve = evals.groupby("step")["roc_auc"].mean()
     ids = {str(i) for i in evals["dataset_id"].unique()}
@@ -94,9 +84,6 @@ def plot_auc_over_training(evals: pd.DataFrame, results: pd.DataFrame, outfile: 
         & (results["status"] == "ok")
         & results["table_id"].isin(ids)
     ]
-
-    use_style()
-    fig, ax = plt.subplots(figsize=(TEXT_WIDTH_IN, 2.2))
     ax.plot(curve.index, curve.to_numpy(), color=COLORS[0], label="Ours (training)")
     linestyles = ["--", "-.", ":", (0, (3, 1, 1, 1)), (0, (5, 5))]
     baselines = [m for m in model_order(same["model"]) if not is_ours(m)]
@@ -110,9 +97,8 @@ def plot_auc_over_training(evals: pd.DataFrame, results: pd.DataFrame, outfile: 
         )
     for model in [m for m in model_order(same["model"]) if is_ours(m)]:
         rows = same[same["model"] == model]
-        step = rows["checkpoint_step"].iloc[0]
         ax.plot(
-            step,
+            rows["checkpoint_step"].iloc[0],
             rows["roc_auc"].mean(),
             marker="*",
             markersize=8,
@@ -127,8 +113,30 @@ def plot_auc_over_training(evals: pd.DataFrame, results: pd.DataFrame, outfile: 
         ylabel=r"Mean ROC AUC ($\mathtt{tabpfn\_val}$)",
         ylim=(min([late.min(), *means]) - 0.02, None),
     )
-    # Below the axes, so it never covers a baseline line.
-    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.32), ncols=3)
+
+
+def plot_training(
+    metrics: pd.DataFrame,
+    evals: pd.DataFrame,
+    results: pd.DataFrame,
+    outfile: Path,
+    smooth: int = 20,
+) -> None:
+    """One figure for the whole run: (a) training loss on the prior,
+    (b) log loss on tabpfn_val, (c) ROC AUC on tabpfn_val with the baselines.
+
+    The ROC AUC legend goes below the figure, so it never covers a line.
+    """
+    use_style()
+    # sharex: all panels use the same step range, so they line up.
+    fig, axes = plt.subplots(1, 3, figsize=(TEXT_WIDTH_IN, 1.9), sharex=True)
+    draw_training_loss(axes[0], metrics, smooth)
+    draw_validation_loss(axes[1], metrics)
+    draw_auc(axes[2], evals, results)
+    for ax, letter in zip(axes, "abc", strict=True):
+        ax.set_title(f"({letter})")
+    handles, labels = axes[2].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, 0.02), ncols=3)
     fig.tight_layout()
     save(fig, outfile)
 
@@ -136,17 +144,13 @@ def plot_auc_over_training(evals: pd.DataFrame, results: pd.DataFrame, outfile: 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("run_dir", type=Path)
-    parser.add_argument("results", nargs="*", help="results CSVs (globs allowed)")
+    parser.add_argument("results", nargs="+", help="results CSVs (globs allowed)")
     parser.add_argument("--smooth", type=int, default=20, help="rows to average")
     args = parser.parse_args()
 
     metrics, evals = load_run(args.run_dir)
-    plot_training_curves(metrics, FIGURES_DIR / "training_curves.pdf", args.smooth)
-    if args.results:
-        results = load_results(args.results)
-        plot_auc_over_training(
-            evals, results, FIGURES_DIR / "roc_auc_over_training.pdf"
-        )
+    results = load_results(args.results)
+    plot_training(metrics, evals, results, FIGURES_DIR / "training.pdf", args.smooth)
 
 
 if __name__ == "__main__":

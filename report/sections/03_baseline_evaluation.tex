@@ -98,23 +98,26 @@ how easy a table is, only on which model is better on it.
 
 \subsubsection{Training progress}\label{sec:training}
 
-\Cref{fig:roc_auc_over_training} shows the mean ROC AUC of the prototype on
+\begin{figure}[!h]  % right below the 2.3.1 heading
+  \centering
+  \includegraphics[width=\linewidth]{training}
+  \caption{The 5-hour training run. (a)~Training loss on the prior (moving
+    average). (b)~Log loss on \tabpfnval{}; the dotted line marks the
+    evaluated checkpoint (\texttt{best.pt}, step 23{,}900). (c)~Mean ROC AUC
+    on \tabpfnval{} (one column order), with the baselines as horizontal
+    lines; the star is the evaluated checkpoint scored with 8 column
+    orders.}
+  \label{fig:training}
+\end{figure}
+
+\Cref{fig:training}c shows the mean ROC AUC of the prototype on
 the first split of \tabpfnval{} during pretraining. It passes $k$-NN and
 logistic regression within 500 steps, gradient boosting after about
 1{,}300 steps (5\,\% of the training) and the random forest at about step
 5{,}000, staying above it in 93\,\% of the later evaluations. After that,
 the ROC AUC hardly changes (0.894 to 0.900), while the validation log loss
-keeps falling until the end (0.378 to 0.358, \Cref{fig:training_curves}):
+keeps falling until the end (0.378 to 0.358, \Cref{fig:training}b):
 longer training mainly improved the probabilities, not the ranking.
-
-\begin{figure}[!ht]
-  \centering
-  \includegraphics[width=\linewidth]{roc_auc_over_training}
-  \caption{Mean ROC AUC of our model on \tabpfnval{} over training (one
-    column order), with the baselines as horizontal lines. The star is the
-    evaluated checkpoint scored with 8 column orders.}
-  \label{fig:roc_auc_over_training}
-\end{figure}
 
 \subsubsection{Overall comparison}\label{sec:overall}
 
@@ -128,20 +131,21 @@ median difference is almost zero (below 0.003 on both sources), so on a
 typical table the prototype and the trees are equally good; its mean lead
 comes from wins that are larger than its losses (prior, against gradient
 boosting: upper quartile $+0.017$, lower quartile $-0.001$). Ranks give a
-clearer picture (\Cref{fig:mean_rank}):
+clearer picture (last column of \Cref{tab:results}):
 on the prior tables, the prototype has the best mean rank (2.02 vs.\ 2.37)
-with non-overlapping intervals and beats gradient boosting on 835 tables
+with non-overlapping 95\,\% intervals ($\pm 0.05$) and beats gradient boosting on 835 tables
 while losing on 518, so its lead on synthetic tables is consistent. On the
 57 OpenML tables it also ranks best (2.04 vs.\ 2.41), but the intervals
-overlap: it is on par with the random forest rather than clearly better.
+($\pm 0.27$ and $\pm 0.25$) overlap: it is on par with the random forest rather than clearly better.
 
 \begin{table}[!ht]
   \centering
   \small
   \input{tables/results}
   \caption{Mean scores per model on the prior and the OpenML tables (splits
-    averaged first). Best value per source in bold; $\uparrow$: higher is
-    better, $\downarrow$: lower is better.}
+    averaged first). Rank: mean rank by ROC AUC, 1 = best on a table. Best
+    value per source in bold; $\uparrow$: higher is better, $\downarrow$:
+    lower is better.}
   \label{tab:results}
 \end{table}
 
@@ -153,14 +157,6 @@ overlap: it is on par with the random forest rather than clearly better.
     Boxes show the middle half of the tables, whiskers 1.5 times its width
     (outliers not drawn); right: tables won and lost.}
   \label{fig:roc_auc_differences}
-\end{figure}
-
-\begin{figure}[!ht]
-  \centering
-  \includegraphics[width=\linewidth]{mean_rank}
-  \caption{Mean rank by ROC AUC per model (1 = best on a table) with 95\%
-    confidence intervals, on the prior and the OpenML tables.}
-  \label{fig:mean_rank}
 \end{figure}
 
 The largest difference lies in the probabilities: the prototype has by far
@@ -211,27 +207,17 @@ a training table twice and cannot memorize it; its training loss is already
 a loss on unseen tables. The risk is rather overfitting to the prior, i.e.\
 learning properties of synthetic tables that real ones lack. We check this
 with the log loss on the real \tabpfnval{} tables during training
-(\Cref{fig:training_curves}). Both losses fall quickly in the first
+(\Cref{fig:training}a and b). Both losses fall quickly in the first
 5{,}000 steps; afterwards, the training loss keeps decreasing slowly (0.68
 to 0.62), while the validation loss flattens at about 0.36 without rising.
 There is thus no overfitting to the prior within our run, but further
 progress on synthetic tables carries over to real ones only marginally.
 
-\begin{figure}[!ht]
-  \centering
-  \includegraphics[width=\linewidth]{training_curves}
-  \caption{Training loss on the prior (left, moving average) and log loss on
-    \tabpfnval{} (right) over the optimizer steps. The dotted line marks the
-    evaluated checkpoint (\texttt{best.pt}, step 23{,}900).}
-  \label{fig:training_curves}
-\end{figure}
-
-A second risk is model selection: the checkpoint is chosen on the first
-split of \tabpfnval{}. On the second split, which was not used for it, the
-prototype is even slightly better (ROC AUC 0.905 vs.\ 0.896), and it also
-leads on the prior tables, so this effect is small. New tables in every
-step, a real validation set that is never trained on, and evaluation prior
-tables with their own seed keep overfitting in check.
+A second risk is model selection on the first split of \tabpfnval{}. On the
+second split, which was not used for it, the prototype is even slightly
+better (ROC AUC 0.905 vs.\ 0.896), so this effect is small. New tables in
+every step, a real validation set and evaluation prior tables with their
+own seed keep overfitting in check.
 
 \subsubsection{Failure analysis}\label{sec:failures}
 

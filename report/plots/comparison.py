@@ -80,51 +80,6 @@ def best_baseline(scores: pd.DataFrame) -> str:
     return scores[[m for m in scores.columns if not is_ours(m)]].mean().idxmax()
 
 
-def mean_ci(scores: pd.DataFrame) -> tuple[pd.Series, pd.Series]:
-    """Mean per column and half width of its 95% confidence interval."""
-    return scores.mean(), 1.96 * scores.std() / np.sqrt(len(scores))
-
-
-def _dot_panels(stats: dict[str, pd.DataFrame], xlabel: str, outfile: Path) -> None:
-    """One panel per source: a dot with an error bar per model, ours on top."""
-    use_style()
-    fig, axes = plt.subplots(1, len(stats), figsize=(TEXT_WIDTH_IN, 1.7))
-    axes = np.atleast_1d(axes)
-    for ax, (source, scores) in zip(axes, stats.items(), strict=True):
-        mean, ci = mean_ci(scores)
-        models = list(scores.columns)
-        y = np.arange(len(models))[::-1]  # first model at the top
-        for yi, model in zip(y, models, strict=True):
-            ax.errorbar(
-                mean[model],
-                yi,
-                xerr=ci[model],
-                fmt="o",
-                markersize=4,
-                capsize=2,
-                color=model_color(model),
-            )
-            ax.annotate(
-                f"{mean[model]:.3f}",
-                (mean[model], yi),
-                xytext=(0, 4),
-                textcoords="offset points",
-                ha="center",
-                fontsize=6,
-            )
-        ax.set_yticks(y, [model_label(m) for m in models])
-        ax.set_ylim(y.min() - 0.6, y.max() + 0.8)
-        ax.grid(axis="y", visible=False)
-        ax.set(
-            xlabel=xlabel,
-            title=f"{SOURCE_LABELS.get(source, source)}, {len(scores)} tables",
-        )
-    for ax in axes[1:]:
-        ax.tick_params(labelleft=False)  # same models in the same order
-    fig.tight_layout()
-    save(fig, outfile)
-
-
 def plot_differences(df: pd.DataFrame, outfile: Path, metric: str = "roc_auc"):
     """Per-table difference "ours minus baseline", one box per baseline and
     one panel per source.
@@ -182,20 +137,6 @@ def plot_differences(df: pd.DataFrame, outfile: Path, metric: str = "roc_auc"):
     save(fig, outfile)
 
 
-def plot_mean_rank(df: pd.DataFrame, outfile: Path, metric: str = "roc_auc") -> None:
-    """Mean rank per model (1 = best on a table) with 95% confidence intervals.
-
-    As the critical-difference diagrams of TabICL/TabICLv2: ranks don't
-    depend on how easy a table is, unlike mean scores.
-    """
-    stats = {
-        s: per_table(df, s, metric).rank(axis=1, ascending=metric in LOWER_IS_BETTER)
-        for s in SOURCES
-        if (df["source"] == s).any()
-    }
-    _dot_panels(stats, "Mean rank (lower is better)", outfile)
-
-
 def plot_per_dataset(df: pd.DataFrame, outfile: Path, ours: str = "tabicl_best"):
     """Our ROC AUC vs the best baseline's per table, one panel per source.
 
@@ -203,7 +144,7 @@ def plot_per_dataset(df: pd.DataFrame, outfile: Path, ours: str = "tabicl_best")
     On OpenML, the tables we lose most on are labeled by dataset name.
     """
     use_style()
-    fig, axes = plt.subplots(1, 2, figsize=(TEXT_WIDTH_IN, 2.75))
+    fig, axes = plt.subplots(1, 2, figsize=(TEXT_WIDTH_IN, 2.2))
     for ax, source in zip(axes, SOURCES, strict=True):
         scores = per_table(df, source)
         if ours not in scores or scores.empty:
@@ -264,7 +205,7 @@ def plot_by_category(df: pd.DataFrame, outfile: Path, metric: str = "roc_auc"):
     fig, axes = plt.subplots(
         len(sources),
         len(CATEGORIES),
-        figsize=(TEXT_WIDTH_IN, 1.75 * len(sources) + 0.3),
+        figsize=(TEXT_WIDTH_IN, 1.4 * len(sources) + 0.3),
         sharey="row",
         squeeze=False,
     )

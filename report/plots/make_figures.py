@@ -19,7 +19,6 @@ from comparison import (
     per_table,
     plot_by_category,
     plot_differences,
-    plot_mean_rank,
     plot_per_dataset,
     table_info,
 )
@@ -27,7 +26,7 @@ from confusion import ConfusionCase, plot_confusion_matrices
 from hydra_zen import instantiate, load_from_yaml
 from style import FIGURES_DIR, is_ours, model_order
 from tables import results_table
-from training_curves import load_run, plot_auc_over_training, plot_training_curves
+from training_curves import load_run, plot_training
 
 from tabicl_reproduction.baselines import BASELINES
 from tabicl_reproduction.data import load_data
@@ -94,10 +93,8 @@ def main() -> None:
 
     metrics, evals = load_run(args.run_dir)
     results = load_results(args.results)
-    plot_training_curves(metrics, out / "training_curves.pdf")
-    plot_auc_over_training(evals, results, out / "roc_auc_over_training.pdf")
+    plot_training(metrics, evals, results, out / "training.pdf")
     plot_differences(results, out / "roc_auc_differences.pdf")
-    plot_mean_rank(results, out / "mean_rank.pdf")
     plot_by_category(results, out / "roc_auc_by_category.pdf")
     results_table(results, out.parent / "tables" / "results.tex")
 
