@@ -1,14 +1,31 @@
 % !TEX root = ../report_template.tex
 \section*{Use of AI tools}  % unnumbered: after the references, not counted
-% Required by the course: how we used AI for this milestone.
-% Be concrete and honest; one short paragraph per point is enough.
-% - Which tools (e.g. Claude Code, ChatGPT, GitHub Copilot) and who used them.
-% - For what: code (e.g. evaluation, baselines, plots, tests), code review,
-%   debugging, reading papers, writing or editing the report text.
-% - What we did ourselves: design decisions, running the experiments,
-%   checking results, interpreting the figures.
-% - How we checked AI output: tests, CI, reviews, comparing numbers.
-% - Where AI was not used or not allowed (e.g. no coding agents on the
-%   cluster).
+% Required by the course: how we used AI for this milestone. DRAFT: each
+% team member checks and completes their own part.
 
-\todo{which AI tools we used, for what, and how we checked the output}
+We used AI tools for code and for the report; every result in this report
+comes from code we ran ourselves, and every number was checked against the
+results files and training logs.
+
+\begin{itemize}
+  \item \textbf{Tools:} Ebubekir used Claude Code (Anthropic) on his own
+    machine. \todo{Junqi and Kiarash: which tools you used, if any.}
+  \item \textbf{Code:} Claude Code helped write and refactor parts of the
+    evaluation code, the scikit-learn style classifier (adapted from
+    nanoTabPFN), the report figures and the results table, and their tests.
+    It also helped review and merge pull requests.
+    \todo{Junqi and Kiarash: what you used AI for in your code.}
+  \item \textbf{Report:} \todo{how we used AI for the report text; to be
+    agreed in the team}
+  \item \textbf{What we did ourselves:} the project plan and task split, the
+    design decisions (model size, metrics, baselines, evaluation protocol),
+    running the training and all experiments, and the interpretation of the
+    results.
+  \item \textbf{Checks:} all code is covered by automated tests and type
+    and style checks, which also run in CI on every pull request; we reran
+    the baselines on a sample of tables to confirm the stored results, and
+    compared every number in the text with the results files and training
+    logs.
+  \item \textbf{Not used:} no AI agent was run on the cluster; we submitted
+    all cluster jobs ourselves, as the course requires.
+\end{itemize}

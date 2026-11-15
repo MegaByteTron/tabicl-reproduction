@@ -50,8 +50,9 @@ training loop modeled on nanoTabPFN \citep{pfefferle2025nanotabpfn}
 (schedule-free AdamW, gradient clipping, regular evaluation on real tables).
 Within our compute budget, we train a model with 5.7 million parameters
 (embedding size 96; 2, 2 and 4 blocks in the column, row and in-context
-stages) for 5~hours on one A100 GPU, on about 207{,}000 prior tables
-(25{,}840 optimizer steps). As in the paper, it sees only synthetic tables
+stages), 4.8 times fewer than the original \tabicl{} size in \nanotabicl{},
+for 5~hours on one A100 GPU, on about 207{,}000 prior tables (25{,}840
+optimizer steps of 8 tables, processed one table at a time). As in the paper, it sees only synthetic tables
 in training. We evaluate the checkpoint with the lowest log loss on
 \tabpfnval{}, measured every 100 steps (step 23{,}900), and average its
 predictions over 8 random column orders, since its output depends on the
