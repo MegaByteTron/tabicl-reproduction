@@ -3,6 +3,29 @@
 % 2 points.
 
 \subsection{\tabicl{} method overview}\label{sec:method}
+% Moved here from 1.1.1 (how the prior generates tables), to use in this
+% section. 1.1.1 now only describes what the generated tables look like and
+% refers here with \Cref{sec:method}.
+% The model is pretrained only on synthetic tables, drawn from a \emph{prior}:
+% a program that defines a distribution over datasets
+% \citep{muller2022pfn,qu2026tabiclv2}. We use the prior of \nanotabicl{}
+% \citep{nanotabicl}, a slightly simplified version of the \tabicl{} prior
+% (\citealt{qu2026tabiclv2}, Sec.~5 and App.~E). For each table it draws a
+% random graph of 2 to 32 nodes; each node applies one of eight random function
+% types (e.g.\ neural networks, tree ensembles, Gaussian processes) to its
+% parents, or holds random points if it has none. Features and label are read
+% from random nodes; categorical columns and the label come from node values by
+% nearest-center assignment or by sampling from a softmax. A table whose label a
+% small ExtraTrees model cannot predict better than a constant is drawn again
+% (App.~E.14), so every table has some signal.
+%
+% With our settings, a table has 320 to 2,048 training rows (80\,\% of 400 to
+% 2,560 rows, log-uniform), 2 to 100 features (log-uniform) and one
+% classification label whose number of classes is drawn uniformly from 2 to 10.
+% The share of categorical columns is drawn from $[-0.5, 1.2]$ and
+% clipped to $[0, 1]$: 41\,\% on average, and at least 29\,\% of the tables have
+% none. A categorical column is drawn with 2 to 100 categories (some can stay
+% empty) and given to the model as integer codes. For evaluation we use 1,600 saved prior tables.
 % The method of the paper \citep{qu2026tabiclv2}, briefly: what does the model
 % approximate (posterior predictive, \citealt{muller2022pfn}), and how do the
 % architecture and the prior achieve it?

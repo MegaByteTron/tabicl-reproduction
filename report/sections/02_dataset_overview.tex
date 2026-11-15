@@ -9,35 +9,35 @@
 
 \subsubsection{Synthetic tables from the prior}\label{sec:prior_tables}
 
-The model is pretrained only on synthetic tables, drawn from a \emph{prior}:
-a program that defines a distribution over datasets
-\citep{muller2022pfn,qu2026tabiclv2}. We use the prior of \nanotabicl{}
-\citep{nanotabicl}, a slightly simplified version of the \tabicl{} prior
-(\citealt{qu2026tabiclv2}, Sec.~5 and App.~E). For each table it draws a
-random graph of 2 to 32 nodes; each node applies one of eight random function
-types (e.g.\ neural networks, tree ensembles, Gaussian processes) to its
-parents, or holds random points if it has none. Features and label are read
-from random nodes; categorical columns and the label come from node values by
-nearest-center assignment or by sampling from a softmax. A table whose label a
-small ExtraTrees model cannot predict better than a constant is drawn again
-(App.~E.14), so every table has some signal.
+The model is pretrained only on synthetic tables drawn from a \emph{prior}:
+a program that generates random tables, each with its own randomly drawn
+rules linking the features to the label \citep{muller2022pfn,qu2026tabiclv2}.
+We use the slightly simplified prior of \nanotabicl{} \citep{nanotabicl}; how
+it generates tables is explained in \Cref{sec:method}. A table whose label
+cannot be predicted better than by a constant is discarded, so no table is
+pure noise. With our settings, the prior generates:
+\begin{itemize}
+  \item \textbf{Sizes:} 400 to 2{,}560 rows (log-uniform), of which 80\,\%
+    are training rows (320 to 2{,}048), and 2 to 100 features
+    (log-uniform).
+  \item \textbf{Feature types:} numerical and categorical columns. On
+    average 41\,\% of the columns are categorical, and at least 29\,\% of
+    the tables have none; a categorical column has 2 to 100 categories and
+    is given to the model as integer codes.
+  \item \textbf{Targets:} one classification label with 2 to 10 classes,
+    drawn uniformly.
+\end{itemize}
+For evaluation, we use 1{,}600 saved prior tables.
 
-With our settings, a table has 320 to 2,048 training rows (80\,\% of 400 to
-2,560 rows, log-uniform), 2 to 100 features (log-uniform) and one
-classification label whose number of classes is drawn uniformly from 2 to 10.
-The share of categorical columns is drawn from $[-0.5, 1.2]$ and
-clipped to $[0, 1]$: 41\,\% on average, and at least 29\,\% of the tables have
-none. A categorical column is drawn with 2 to 100 categories (some can stay
-empty) and given to the model as integer codes. For evaluation we use 1,600 saved prior tables.
+\subsubsection{Benchmark datasets from OpenML}\label{sec:real_tables}
 
-\subsubsection{Real tables}\label{sec:real_tables}
-
-The real benchmark, \tabpfnval{}, consists of the 57 classification
-datasets that \citet{hollmann2025tabpfn} used to develop \tabpfn{}
-(Supplementary Table~5). That list already leaves out datasets with more than
+Our real benchmark consists of the 57 classification datasets from OpenML
+\citep{vanschoren2013openml} that \citet{hollmann2025tabpfn} used to develop
+\tabpfn{} (Supplementary Table~5); we refer to it as \tabpfnval{}. That list already leaves out datasets with more than
 500 features or more than 10 classes. \tabicl{} uses these datasets for its
-ablations; the paper speaks of 60 (\citealt{qu2026tabiclv2}, Fig.~10), but the
-supplementary table lists 57. The datasets come from
+ablations.\footnote{The \tabicl{} paper speaks of 60 datasets
+(\citealt{qu2026tabiclv2}, Fig.~10), but the supplementary table of
+\citet{hollmann2025tabpfn} lists 57; we use these 57.} The datasets come from
 many domains, for example medicine (\dataset{heart-c}), credit
 (\dataset{heloc}) and criminal justice (\dataset{compas-two-years}). They have
 2 to 299 features (median 16) and 42 to 2,048 training rows (median 763);
@@ -45,7 +45,7 @@ many domains, for example medicine (\dataset{heart-c}), credit
 which we count as categorical (311 of 1,826 columns); numerically coded
 categories are not counted. 12 datasets have missing values.
 
-\Cref{fig:example_tables}, made with our \emph{show} function, shows three
+\Cref{fig:example_tables} shows three
 prior and three real tables, each projected onto its first two principal
 components. The prior tables differ a lot: in prior table~1 (middle) the
 classes lie along a curve and are well separated, while the seven classes of
@@ -59,7 +59,7 @@ directions, so overlap here does not mean the classes cannot be separated.
 \begin{figure}[t]
   \centering
   \includegraphics[width=\linewidth]{example_tables}
-  \caption{Example tables. Top: the first three saved prior tables (not
+  \caption{Example tables, drawn with \texttt{show}. Top: the first three saved prior tables (not
     hand-picked). Bottom: three OpenML tables with 3, 2 and 6 classes. Each
     panel shows one table, projected onto the first two principal components
     of its standardized training rows. Filled markers are training rows, hollow markers are
