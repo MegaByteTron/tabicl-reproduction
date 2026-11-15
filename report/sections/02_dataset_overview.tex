@@ -7,7 +7,87 @@
 % of classes, targets)? What do the benchmark datasets (\tabpfnval{},
 % \citealt{hollmann2025tabpfn}) look like? Show examples made with show().
 
-\todo{prior tables and benchmark tables, with show() figures}
+\paragraph{Synthetic tables from the prior.}
+The model is pretrained only on synthetic tables, drawn from a \emph{prior}:
+a program that defines a distribution over datasets
+\citep{muller2022pfn,qu2026tabiclv2}. We use the prior of \nanotabicl{}
+\citep{nanotabicl}, a slightly simplified version of the \tabicl{} prior
+(\citealt{qu2026tabiclv2}, Sec.~5 and App.~E). For each table it draws a
+random graph of 2 to 32 nodes; each node applies one of eight random function
+types (e.g.\ neural networks, tree ensembles, Gaussian processes) to its
+parents, or holds random points if it has none. Features and label are read
+from random nodes; categorical columns and the label come from node values by
+nearest-center assignment or by sampling from a softmax. A table whose label a
+small ExtraTrees model cannot predict better than a constant is drawn again
+(App.~E.14), so every table has some signal.
+
+With our settings, a table has 320 to 2,048 training rows (80\% of 400 to
+2,560 rows, log-uniform), 2 to 100 features (log-uniform) and one
+classification label whose number of classes is drawn uniformly from 2 to 10.
+The share of categorical columns is drawn from $[-0.5, 1.2]$ and
+clipped to $[0, 1]$: 41\% on average, and at least 29\% of the tables have
+none. A categorical column has 2 to 100 categories, given to the model as
+integer codes. For evaluation we use 1,600 saved prior tables; in them, the
+median share of the largest class in the training rows is 0.39.
+
+\paragraph{Real tables.}
+The real benchmark, \tabpfnval{}, consists of the 57 classification
+datasets that \citet{hollmann2025tabpfn} used to develop \tabpfn{}
+(Supplementary Table~5). That list already leaves out datasets with more than
+500 features or more than 10 classes. \tabicl{} uses these datasets for its
+ablations; the paper speaks of 60 (\citealt{qu2026tabiclv2}, Fig.~10), but the
+supplementary table lists 57. Like the paper, we use at most 2,048 training
+rows per dataset and two random train/test splits. The datasets come from
+many domains, for example medicine (\dataset{heart-c}), credit
+(\dataset{heloc}) and criminal justice (\dataset{compas-two-years}). They have
+2 to 299 features (median 16) and 42 to 2,048 training rows (median 763);
+32 of 57 are binary. In 32 datasets at least one column is stored as text,
+which we count as categorical (311 of 1,826 columns); numerically coded
+categories are not counted. 12 datasets have missing values.
+
+\paragraph{Examples.}
+\Cref{fig:example_tables}, made with our \emph{show} function, shows three
+prior and three real tables, each projected onto its first two principal
+components. The prior tables differ a lot: in prior table~1 (middle) the
+classes lie along a curve and are well separated, while the seven classes of
+prior table~2 (right) overlap. The real tables show the same range: one
+penguin species is clearly separate and the other two sit side by side, the
+two classes of
+\dataset{heart-statlog} overlap, and \dataset{breast-tissue} has only 85
+training rows for six classes. A projection onto two axes hides the other
+directions, so overlap here does not mean the classes cannot be separated.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{example_tables}
+  \caption{Example tables. Top: the first three saved prior tables (not
+    hand-picked). Bottom: three OpenML tables with 3, 2 and 6 classes. Each
+    panel shows one table, projected onto the first two principal components
+    of its standardized training rows. Filled markers are training rows, hollow markers are
+    test rows, and each class has its own color and shape (at most 250 rows
+    shown per table).}
+  \label{fig:example_tables}
+\end{figure}
+
+\Cref{fig:table_shapes} compares the shapes of all tables. The prior covers
+the features of the real tables up to 100, but three real datasets have more
+(168, 260 and 299). The real tables are often smaller: 21 of 57 have fewer
+than 320 training rows, the smallest size the model saw in training. And while
+the prior's tables spread over 2 to 10 classes, more than half of the real
+tables are binary. (Tables with many classes are a bit rarer in the prior than
+drawn, because a class can end up with no training rows.)
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{table_shapes}
+  \caption{Share of tables per number of training rows, features and classes
+    for the 1,600 saved prior tables and the 57 OpenML tables (split 0).
+    Dashed lines: the range the prior was trained on (320 to 2,048 training
+    rows, at most 100 features). 2,048 is also the cap on the OpenML training
+    rows, so the 19 OpenML tables at the cap are larger datasets from which
+    2,048 training rows were sampled.}
+  \label{fig:table_shapes}
+\end{figure}
 
 \subsection{Data quality and splits}\label{sec:quality}
 % Problems that could distort the evaluation: degenerate synthetic tables,
