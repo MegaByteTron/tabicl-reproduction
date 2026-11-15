@@ -72,7 +72,7 @@ def plot_training_curves(metrics: pd.DataFrame, outfile: Path, smooth: int = 20)
         ylabel=r"Log loss ($\mathtt{tabpfn\_val}$)",
         ylim=(late.min() - margin, late.max() + margin),
     )
-    right.legend(loc="upper right")
+    right.legend(loc="upper center")  # the free area above the curve
 
     fig.tight_layout()
     save(fig, outfile)
