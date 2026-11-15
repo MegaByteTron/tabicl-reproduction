@@ -4,8 +4,8 @@
     uv run python report/plots/data_overview.py
 
 Writes report/figures/example_tables.pdf (show() on 3 prior and 3 OpenML
-tables) and table_shapes.pdf (training rows vs. features, and classes, of the
-prior tables and the OpenML tables).
+tables) and table_shapes.pdf (training rows, features and classes of the
+prior tables vs. the OpenML tables).
 """
 
 import argparse
@@ -16,7 +16,6 @@ from typing import Any
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from matplotlib.patches import Rectangle
 from matplotlib.typing import RcKeyType
 from style import (
     FIGURES_DIR,
@@ -45,13 +44,12 @@ LEGEND = {
     "tabpfn_val": r"OpenML ($\mathit{tabpfn\_val}$)",
 }
 
-# Prior in light gray, OpenML in black on top, so the model colors of the
-# Section 2 figures keep their meaning.
-POINT_STYLES = {
-    "prior_val": {"s": 3, "color": INK_MUTED, "alpha": 0.35, "linewidths": 0},
-    "tabpfn_val": {"s": 10, "color": INK, "marker": "x", "linewidths": 0.8},
+# Prior filled in gray, OpenML as an outline, so the model colors of the
+# Section 3 figures keep their meaning.
+SOURCE_STYLES = {
+    "prior_val": {"color": INK_MUTED, "alpha": 0.45},
+    "tabpfn_val": {"color": INK, "histtype": "step", "linewidth": 1.0},
 }
-BAR_COLORS = {"prior_val": INK_MUTED, "tabpfn_val": INK}
 
 
 def example_tables() -> tuple[list[TableSample], list[str]]:
@@ -89,65 +87,73 @@ def plot_examples(tables: list[TableSample], titles: list[str], outfile: Path):
     print(f"Wrote {outfile}")
 
 
-def plot_shapes(stats: pd.DataFrame, outfile: Path):
-    """Shapes of all evaluation tables: training rows vs. features (left) and
-    the share of tables per number of classes (right).
+def log_bins(low: float, high: float, n: int, below: int = 0, above: int = 0):
+    """n log-spaced bins from low to high (both exact edges), plus `below` and
+    `above` bins of the same width outside that range."""
+    edges = np.geomspace(low, high, n + 1)
+    ratio = edges[1] / edges[0]
+    lower = low / ratio ** np.arange(below, 0, -1)
+    upper = high * ratio ** np.arange(1, above + 1)
+    return np.concatenate([lower, edges, upper])
 
-    Left: one point per table, log axes; the dashed box is the range the
-    prior was trained on (320 to 2,048 training rows, 2 to 100 features), so
-    OpenML tables outside it are easy to spot. Uses split 0, so each table
-    counts once.
+
+def plot_shapes(stats: pd.DataFrame, outfile: Path):
+    """Share of tables per number of training rows, features and classes.
+
+    Dashed lines: the range the prior was trained on (320 to 2,048 training
+    rows, at most 100 features); they are bin edges, so no bar crosses them.
+    Uses split 0, so each table counts once.
     """
     stats = stats[stats["split_seed"] == 0]
     settings = PRIOR_SETTINGS
     min_rows = round(settings["n_train"] * settings["n_samples"])
     max_rows = round(settings["n_train"] * settings["max_samples"])
-    min_features, max_features = settings["min_features"], settings["max_features"]
+    max_features = settings["max_features"] + 0.5  # between 100 and 101
+    panels = [
+        (
+            "n_train",
+            "Training rows",
+            log_bins(min_rows, max_rows, 6, below=8),
+            [min_rows, max_rows],
+        ),
+        # Half-integer edges: feature counts are integers.
+        (
+            "n_features",
+            "Features",
+            log_bins(1.5, max_features, 10, above=3),
+            [max_features],
+        ),
+        ("n_classes", "Classes", np.arange(1.5, 11), []),
+    ]
+    ticks = {
+        "n_train": [30, 100, 300, 1000],
+        "n_features": [2, 10, 30, 100, 300],
+        "n_classes": list(range(2, 11)),
+    }
 
     use_style()
-    fig, (left, right) = plt.subplots(
-        1, 2, figsize=(TEXT_WIDTH_IN, 2.1), width_ratios=[1.6, 1]
-    )
-    for source, style in POINT_STYLES.items():
-        rows = stats[stats["source"] == source]
-        left.scatter(rows["n_train"], rows["n_features"], label=LEGEND[source], **style)
-    left.add_patch(
-        Rectangle(
-            (min_rows, min_features),
-            max_rows - min_rows,
-            max_features - min_features,
-            fill=False,
-            edgecolor=INK_MUTED,
-            linestyle="--",
-            linewidth=0.8,
-        )
-    )
-    left.set(xscale="log", yscale="log", xlabel="Training rows", ylabel="Features")
-    for axis, ticks in [(left.xaxis, [30, 100, 300, 1000]), (left.yaxis, [2, 10, 100])]:
-        axis.set_ticks(ticks, labels=[str(t) for t in ticks])
-        axis.set_minor_locator(plt.NullLocator())
+    fig, axes = plt.subplots(1, 3, figsize=(TEXT_WIDTH_IN, 1.8), sharey=True)
+    for ax, (column, label, bins, limits) in zip(axes, panels, strict=True):
+        for source, style in SOURCE_STYLES.items():
+            values = stats.loc[stats["source"] == source, column]
+            # np.histogram drops values outside the bins without a word.
+            outside = values[(values < bins[0]) | (values > bins[-1])]
+            if len(outside):
+                raise ValueError(f"{column} outside the bins: {list(outside)}")
+            # Shares, not counts: 1,600 prior tables vs. 57 OpenML tables.
+            weights = np.full(len(values), 1 / len(values))
+            ax.hist(values, bins, weights=weights, label=LEGEND[source], **style)
+        for x in limits:
+            ax.axvline(x, color=INK_MUTED, linestyle="--", linewidth=0.8)
+        if column != "n_classes":
+            ax.set_xscale("log")
+            ax.minorticks_off()
+        ax.set_xticks(ticks[column], labels=[str(t) for t in ticks[column]])
+        ax.set_xlabel(label)
+    axes[0].set_ylabel("Share of tables")
 
-    classes = np.arange(2, 11)
-    width = 0.4
-    for offset, (source, color) in zip(
-        (-width / 2, width / 2), BAR_COLORS.items(), strict=True
-    ):
-        values = stats.loc[stats["source"] == source, "n_classes"]
-        # Shares, not counts: 1,600 prior tables vs. 57 OpenML tables.
-        share = values.value_counts(normalize=True).reindex(classes, fill_value=0)
-        right.bar(classes + offset, share, width, color=color)
-    right.set(xlabel="Classes", ylabel="Share of tables", xticks=classes)
-    right.grid(axis="x", visible=False)
-
-    handles, labels = left.get_legend_handles_labels()
-    fig.legend(
-        handles,
-        labels,
-        loc="lower center",
-        ncol=2,
-        bbox_to_anchor=(0.5, 1.0),
-        markerscale=2.5,  # the prior points are tiny in the plot
-    )
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="lower center", ncol=2, bbox_to_anchor=(0.5, 1.0))
     fig.tight_layout()
     save(fig, outfile)
 

@@ -76,23 +76,22 @@ directions, so overlap here does not mean the classes cannot be separated.
   \label{fig:example_tables}
 \end{figure}
 
-\Cref{fig:table_shapes} compares the shapes of all tables. Every prior
-table lies inside the range the model was trained on (dashed box), but many
-real tables do not: 21 of the 57 OpenML datasets have fewer than 320
-training rows, and three have more than 100 features (168, 260 and 299).
-And while the prior's tables spread evenly over 2 to 10 classes, more than
-half of the real tables are binary.
+\Cref{fig:table_shapes} compares the shapes of all tables. The prior covers
+the features of the real tables up to 100, but three real datasets have more
+(168, 260 and 299). The real tables are often smaller: 21 of 57 have fewer
+than 320 training rows, the smallest size the model saw in training. And while
+the prior's tables spread over 2 to 10 classes, more than half of the real
+tables are binary.
 
 \begin{figure}[t]
   \centering
   \includegraphics[width=\linewidth]{table_shapes}
-  \caption{Shapes of the 1,600 saved prior tables and the 57 OpenML tables
-    (split 0). Left: training rows against features, one point per table;
-    the dashed box is the range the prior was trained on (320 to 2,048
-    training rows, 2 to 100 features). 2,048 is also the cap on the OpenML
-    training rows, so the 19 OpenML tables at the right edge are larger
-    datasets from which 2,048 training rows were sampled. Right: share of
-    tables per number of classes.}
+  \caption{Share of tables per number of training rows, features and classes
+    for the 1,600 saved prior tables and the 57 OpenML tables (split 0).
+    Dashed lines: the range the prior was trained on (320 to 2,048 training
+    rows, at most 100 features). 2,048 is also the cap on the OpenML training
+    rows, so the 19 OpenML tables at the cap are larger datasets from which
+    2,048 training rows were sampled.}
   \label{fig:table_shapes}
 \end{figure}
 
