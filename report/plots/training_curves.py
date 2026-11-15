@@ -127,7 +127,8 @@ def plot_auc_over_training(evals: pd.DataFrame, results: pd.DataFrame, outfile: 
         ylabel=r"Mean ROC AUC ($\mathtt{tabpfn\_val}$)",
         ylim=(min([late.min(), *means]) - 0.02, None),
     )
-    ax.legend(loc="lower right", ncols=2)
+    # Below the axes, so it never covers a baseline line.
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.32), ncols=3)
     fig.tight_layout()
     save(fig, outfile)
 

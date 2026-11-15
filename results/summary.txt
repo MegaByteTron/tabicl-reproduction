@@ -7,3 +7,5 @@ hist_gradient_boosting              NaN tabpfn_val       114          0.839     
    logistic_regression              NaN tabpfn_val       114          0.819         0.165                   0.729                  0.195          0.456         0.389         0.872        0.139     0.086    0.077
          random_forest              NaN  prior_val      1600          0.763         0.232                   0.678                  0.281          1.026         1.494         0.880        0.136     0.086    0.076
          random_forest              NaN tabpfn_val       114          0.844         0.155                   0.779                  0.177          0.547         0.754         0.898        0.125     0.106    0.078
+           tabicl_best        23900.000  prior_val      1600          0.767         0.222                   0.676                  0.278          0.592         0.565         0.890        0.124     0.051    0.038
+           tabicl_best        23900.000 tabpfn_val       114          0.853         0.146                   0.778                  0.190          0.353         0.334         0.901        0.123     0.065    0.058
