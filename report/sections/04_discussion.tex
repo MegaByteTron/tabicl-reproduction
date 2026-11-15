@@ -14,33 +14,34 @@ distribution under the prior,
 $p(y \mid x, \mathcal{D}_{\mathrm{train}}) = \int p(y \mid x, \phi)\,
 p(\phi \mid \mathcal{D}_{\mathrm{train}})\, \mathrm{d}\phi$,
 where $\phi$ are the rules that generated a table. A forward pass thus
-approximates Bayesian inference over all rules the prior could have used,
-and how well it works on real tables depends on how well the prior covers
-them. The prior draws, for each table, a random graph of 2 to 32 nodes, each
-applying a random function such as a small neural network, a tree ensemble
-or a Gaussian process to its parents, and reads features and label from
-random nodes (\citealt{qu2026tabiclv2}, Sec.~5 and App.~E.3). Categorical
-columns and the label are made from node values by nearest-center assignment
-or a softmax, and a table is drawn again if a small ExtraTrees model cannot
-predict its label better than a constant (App.~E.14). The prior of
-\nanotabicl{} that we use differs from the paper's in four ways: it draws
-the number of features log-uniformly instead of uniformly, allows up to 100
-categories instead of at most 9 (App.~E.3), has no filter for graphs in
-which features and label share no ancestor (Sec.~5), and keeps tables with a
-class only in the test rows (\Cref{sec:data_quality}). The architecture,
-which builds on TabICL \citep{qu2025tabicl}, processes a table in three
-stages, each sharing its weights over rows or columns so that tables of any
-size fit (\citealt{qu2026tabiclv2}, Sec.~3). In the \emph{column
-embedding}, each cell is embedded together with the columns one and three
-places further on and, in training rows, the label; attention within the
-column relates it to the column's distribution. In the \emph{row
-interaction}, a transformer over the columns of each row merges them into a
-fixed-size row vector. In the \emph{in-context learning} stage, a
-transformer over the rows, in which every row attends to the labelled
-training rows, predicts the classes of the test rows.
-The first two stages use column positions, so the output depends on the
-column order; the prior shuffles columns, and we average over 8 orders at
-test time (\Cref{sec:prototype}).
+approximates Bayesian inference over these rules, so the model works on real
+tables only as far as the prior covers them.
+
+For each table, the prior draws a random graph of 2 to 32 nodes, each
+applying a random function, such as a small neural network, a tree ensemble
+or a Gaussian process, to its parents (\citealt{qu2026tabiclv2}, Sec.~5 and
+App.~E.3). Features and the label are read from random nodes; categorical
+columns, the label among them, come from nearest-center assignment or a
+softmax over node values (App.~E.6). A table is drawn again if a small
+ExtraTrees model cannot predict its label better than a constant
+(App.~E.14). The prior we use (\nanotabicl{}'s, with our own table sampler)
+differs from the paper's in four ways that matter here: the number of
+features is log-uniform instead of uniform, categories go up to 100 instead
+of at most 9 (App.~E.3), graphs in which features and label share no
+ancestor are not filtered out (Sec.~5), and tables with a class only in the
+test rows are kept (App.~E.13).
+
+The architecture builds on TabICL \citep{qu2025tabicl} and shares its
+weights over rows and columns, so tables of any size fit
+(\citealt{qu2026tabiclv2}, Sec.~3). The \emph{column embedding} embeds each
+cell with the columns one and three places further on and, in training rows,
+the label, then attends within the column to relate the cell to the column's
+distribution; a \emph{row transformer} merges the columns of each row into
+one vector; and an \emph{in-context learning} transformer lets every row
+attend to the labelled training rows and predicts the test classes.
+Because the first two stages use column
+positions, the output depends on the column order, so the prior shuffles
+columns and we average over 8 orders at test time (\Cref{sec:prototype}).
 
 \subsection{Challenges and limitations}\label{sec:challenges}
 % Why is the task not trivial? Why would a model trained only on synthetic
