@@ -69,3 +69,17 @@ def test_win_and_loss_picks_extremes(results):
     diff = scores["tabicl_best"] - scores["random_forest"]
     readable = diff[info.loc[diff.index, "n_classes"].between(3, 6)]
     assert tables == {readable.idxmax(): "ours wins", readable.idxmin(): "ours loses"}
+
+
+def test_results_table_bolds_best_per_source(tmp_path, results):
+    from tables import results_table
+
+    results.loc[results["model"] == "knn", "roc_auc"] = 1.0
+    results.loc[results["model"] == "knn", "ece"] = 0.0
+    text = results_table(results, tmp_path / "results.tex").read_text()
+    knn_rows = [line for line in text.splitlines() if line.startswith("$k$-NN")]
+    assert len(knn_rows) == 2  # one per source
+    for row in knn_rows:
+        cells = row.split(" & ")
+        assert cells[1] == r"\textbf{1.000}" and r"\textbf{0.000}" in cells[5]
+    assert text.count(r"\midrule") == 2

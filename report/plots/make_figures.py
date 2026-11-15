@@ -5,7 +5,7 @@
 
 The run folder holds metrics.jsonl, eval_datasets.jsonl, .hydra/ and the
 weights (outputs/runs/<date>/<time>/). Writes PDFs into report/figures/
-(or --out). The confusion matrices predict a few OpenML tables again, which
+(or --out) and the results table into report/tables/. The confusion matrices predict a few OpenML tables again, which
 takes a few seconds on the CPU.
 """
 
@@ -26,6 +26,7 @@ from comparison import (
 from confusion import ConfusionCase, plot_confusion_matrices
 from hydra_zen import instantiate, load_from_yaml
 from style import FIGURES_DIR, is_ours, model_order
+from tables import results_table
 from training_curves import load_run, plot_auc_over_training, plot_training_curves
 
 from tabicl_reproduction.baselines import BASELINES
@@ -98,6 +99,7 @@ def main() -> None:
     plot_overall(results, out / "overall_roc_auc.pdf")
     plot_mean_rank(results, out / "mean_rank.pdf")
     plot_by_category(results, out / "roc_auc_by_category.pdf")
+    results_table(results, out.parent / "tables" / "results.tex")
 
     ours = [m for m in model_order(results["model"]) if is_ours(m)]
     if not ours:
