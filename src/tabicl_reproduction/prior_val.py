@@ -18,13 +18,15 @@ from tabicl_reproduction.data import load_data
 from tabicl_reproduction.data.saved_tables import TENSORS
 from tabicl_reproduction.results import _git_commit
 
-VERSION = "v1"
+# v2: random table sizes and shuffled columns, like pretraining.
+VERSION = "v2"
 N_TABLES = 1600  # the number ticket #7 asks for
 SEED = 2026  # pretraining uses seed 0, so these are not training tables
 # The pretraining prior settings (PriorData in training/configs.py).
 PRIOR_SETTINGS: dict[str, Any] = {
     "n_train": 0.8,
-    "n_samples": 1024,
+    "n_samples": 400,
+    "max_samples": 2560,
     "min_features": 2,
     "max_features": 100,
     "max_classes": 10,

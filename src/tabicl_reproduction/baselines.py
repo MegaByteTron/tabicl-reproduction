@@ -20,7 +20,7 @@ import json
 import logging
 import time
 import warnings
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path
 from typing import Any
 
@@ -139,11 +139,14 @@ def summarize(df: pd.DataFrame) -> pd.DataFrame:
     return summary.reset_index()
 
 
-def run_all(out: Path, limit: int | None = None) -> None:
-    """Run every baseline on tabpfn_val (2 splits) and the saved prior tables."""
-    if any(out.glob("*.csv")):
-        # The writers append, so a second run would add duplicate rows.
-        raise SystemExit(f"{out}/ already has results; move or delete them first")
+def result_tables(
+    limit: int | None = None,
+) -> Iterator[tuple[dict[str, Any], Iterable[TableSample]]]:
+    """The tables every model is scored on: tabpfn_val (2 splits), then prior_val.
+
+    Yields (info, tables) per source and split. info has the source, split_seed
+    and data_version for the results CSV; tables shows a progress bar.
+    """
     prior_dir = default_data_dir() / "prior_val"
     if not (prior_dir / "meta.json").exists():
         raise SystemExit(
@@ -172,15 +175,37 @@ def run_all(out: Path, limit: int | None = None) -> None:
         kwargs: dict[str, Any] = (
             {"split_seed": split_seed} if source == "tabpfn_val" else {}
         )
-        tables = load_data(source, **kwargs)
         n = min(n_tables, limit or n_tables)
-        run_baselines(
-            tqdm(itertools.islice(tables, n), total=n, desc=f"{source} {split_seed}"),
-            out,
-            source=source,
-            split_seed=split_seed,
-            data_version=data_version,
-        )
+        tables = itertools.islice(load_data(source, **kwargs), n)
+        info = {
+            "source": source,
+            "split_seed": split_seed,
+            "data_version": data_version,
+        }
+        yield info, tqdm(tables, total=n, desc=f"{source} {split_seed}")
+
+
+def run_all(out: Path, limit: int | None = None) -> None:
+    """Run every baseline on tabpfn_val (2 splits) and the saved prior tables."""
+    if any(out.glob("*.csv")):
+        # The writers append, so a second run would add duplicate rows.
+        raise SystemExit(f"{out}/ already has results; move or delete them first")
+    for info, tables in result_tables(limit):
+        run_baselines(tables, out, **info)
+
+
+def write_summary(out: Path) -> None:
+    """Print the summary of every results CSV in out and save out/summary.txt."""
+    try:
+        summary = summarize(load_results(out / "*.csv"))
+    except FileNotFoundError as error:
+        raise SystemExit(error) from None
+    if summary.empty:
+        raise SystemExit("No table was scored by every model")
+    text = summary.to_string(index=False, float_format="%.3f")
+    # .txt, not .csv: the folder's *.csv files must all be result files.
+    (out / "summary.txt").write_text(text + "\n")
+    print(text)
 
 
 def main() -> None:
@@ -198,16 +223,7 @@ def main() -> None:
         # one thread is ~7x faster here, with identical results.
         with threadpool_limits(1):
             run_all(out, args.limit)
-    try:
-        summary = summarize(load_results(out / "*.csv"))
-    except FileNotFoundError as error:
-        raise SystemExit(error) from None
-    if summary.empty:
-        raise SystemExit("No table was scored by every model")
-    text = summary.to_string(index=False, float_format="%.3f")
-    # .txt, not .csv: the folder's *.csv files must all be result files.
-    (out / "summary.txt").write_text(text + "\n")
-    print(text)
+    write_summary(out)
 
 
 if __name__ == "__main__":

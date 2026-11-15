@@ -107,7 +107,11 @@ PriorData = builds(
     load_data,
     dataset="prior",
     n_train=0.8,
-    n_samples=1024,
+    # Tables of 400 to 2,560 rows, log-uniform: 400 is where the paper's
+    # stage 2 starts (App. B.1), and 80% of 2,560 is 2,048 training rows,
+    # the most any tabpfn_val table has.
+    n_samples=400,
+    max_samples=2560,
     min_features=2,
     max_features=100,
     max_classes="${model.max_classes}",

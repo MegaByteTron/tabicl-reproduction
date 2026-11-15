@@ -50,7 +50,7 @@ uv run python scripts/train.py model=tiny optimizer=muon --cfg job
 | `log_every` | `10` | Log training metrics to `metrics.jsonl` every this many steps. |
 | `checkpoint_every_min` | `20.0` | Also save `last.pt` every this many minutes. `last.pt` is always saved after each epoch. |
 | `monitor` | `eval/log_loss` | Metric that decides `best.pt` (lower is better). Needs an evaluator. |
-| `resume` | `null` | Run folder (or `last.pt`) to continue from. |
+| `resume` | `null` | Run folder (or `last.pt`) to continue from. The data options come from the command line, not the old run: to continue a run from before random table sizes, add `data.n_samples=1024 data.max_samples=null`. |
 | `out_dir` | `null` | Output folder. By default Hydra's `outputs/<date>/<time>/`. |
 | `cfg.seed` | `0` | Seed for Python, numpy and torch. Written to `run.json`. |
 
@@ -97,7 +97,7 @@ The training tables come from the synthetic prior, an endless stream.
 
 | Option | Default | Meaning |
 |---|---|---|
-| `data.n_samples` | `1024` | Rows per table. |
+| `data.n_samples` / `data.max_samples` | `400` / `2560` | Rows per table: random between the two (log-uniform). `data.max_samples=null` gives exactly `n_samples` rows. |
 | `data.n_train` | `0.8` | Training share of the rows (a float is a fraction, an int is a row count). |
 | `data.min_features` / `data.max_features` | `2` / `100` | Range for the number of features per table. |
 | `data.max_classes` | `${model.max_classes}` | Maximum number of classes per table. |

@@ -75,9 +75,13 @@ class NanoTabICLv2(nn.Module):
         n_batch, n_train = y.shape
 
         # ----- Embedding: standardize -> repeated feature grouping -> x embedding -> add y embedding to train
-        x = (x - x[:, :n_train].mean(dim=1, keepdim=True)) / (
-            x[:, :n_train].std(dim=1, unbiased=False, keepdim=True) + 1e-8
-        )
+        mean = x[:, :n_train].mean(dim=1, keepdim=True)
+        std = x[:, :n_train].std(dim=1, unbiased=False, keepdim=True)
+        # A column with one value in the training rows carries no information
+        # (the official TabICL code drops it), so it becomes 0 instead of a test
+        # value divided by ~0. Outliers are clipped like the official scaler;
+        # training rows are never clipped: their |z| is at most sqrt(n_train - 1).
+        x = torch.where(std > 0, (x - mean) / (std + 1e-8), 0.0).clamp(-100, 100)
         idxs = torch.arange(n_cols, dtype=torch.long, device=x.device)
         x = torch.stack(
             [
