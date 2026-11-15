@@ -46,15 +46,29 @@ From a terminal: `cd report && latexmk -pdf report_template.tex`.
 ## Figures
 
 Every figure is made by a script in `plots/`, never by hand, so it can be
-remade when the results change:
+remade when the results change. One command makes all of them from the
+training run and the results CSVs (`results/*.csv` by default):
 
 ```bash
-uv run python report/plots/training_curves.py <run folder>
+uv run python report/plots/make_figures.py outputs/runs/<date>/<time>
 ```
 
-The scripts share `plots/style.py`: same fonts, colors and width, saved as
-vector PDF into `figures/`. To add a figure, copy `training_curves.py`, change
-the plotting part, and call `save(fig, "<name>")`. Then in a section:
+| Figure | Shows |
+|---|---|
+| `training_curves` | training loss (prior) and `tabpfn_val` log loss over the steps; overfitting check |
+| `roc_auc_over_training` | our mean ROC AUC on `tabpfn_val` over the steps, baselines as lines |
+| `overall_roc_auc` | mean ROC AUC per model with 95% CIs, prior vs. OpenML tables |
+| `mean_rank` | mean rank per model (1 = best per table), prior vs. OpenML tables |
+| `per_dataset` | our ROC AUC vs. the best baseline's, one point per table |
+| `roc_auc_by_category` | mean ROC AUC by number of classes, features and training rows |
+| `confusion_matrices` | ours vs. the best baseline on the OpenML table we win most / lose most |
+
+The plot code is in `plots/training_curves.py` (run logs), `plots/comparison.py`
+(results CSVs) and `plots/confusion.py`; every function takes the data and an
+`outfile`. They share `plots/style.py`: same fonts, colors (one per model) and
+width, saved as vector PDF into `figures/`. To add a figure, write a function
+next to the others, call `save(fig, outfile)`, add it to `make_figures.py` and
+a test in `tests/report/`. Then in a section:
 
 ```latex
 \begin{figure}

@@ -5,6 +5,7 @@ to the report's text width, so fonts appear in the PDF at the size set here
 (no scaling), and saved as vector PDFs into report/figures/.
 """
 
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +21,42 @@ TEXT_WIDTH_IN = 5.3
 
 # One color per method/run, in this order, everywhere in the report.
 COLORS = CLASS_COLORS
+
+# Display names of the models in the results CSVs; our model first, so it
+# always gets the first color. Unknown models keep their CSV name.
+MODEL_LABELS = {
+    "tabicl_best": "Ours",
+    "hist_gradient_boosting": "Gradient boosting",
+    "random_forest": "Random forest",
+    "logistic_regression": "Logistic regression",
+    "knn": "$k$-NN",
+    "tabicl_model": "Ours (last step)",
+}
+SOURCE_LABELS = {
+    "prior_val": r"Prior ($\mathtt{prior\_val}$)",
+    "tabpfn_val": r"OpenML ($\mathtt{tabpfn\_val}$)",
+}
+
+
+def model_order(models) -> list[str]:
+    """Models in the order of MODEL_LABELS, unknown ones after, sorted."""
+    known = [m for m in MODEL_LABELS if m in set(models)]
+    return known + sorted(set(models) - set(known))
+
+
+def model_label(model: str) -> str:
+    return MODEL_LABELS.get(model, model)
+
+
+def model_color(model: str) -> str:
+    """The same color for a model in every figure (gray if unknown)."""
+    names = list(MODEL_LABELS)
+    return COLORS[names.index(model)] if model in names else INK_MUTED
+
+
+def is_ours(model: str) -> bool:
+    return model.startswith("tabicl")
+
 
 RC_PARAMS: dict[RcKeyType, Any] = {
     # Computer Modern, the report's LaTeX font (ships with matplotlib), so
@@ -51,12 +88,15 @@ RC_PARAMS: dict[RcKeyType, Any] = {
 
 def use_style() -> None:
     plt.rcParams.update(RC_PARAMS)
+    # fontTools warns about cmr10's old timestamps when embedding it in a PDF.
+    logging.getLogger("fontTools").setLevel(logging.ERROR)
 
 
-def save(fig: plt.Figure, name: str) -> Path:
-    """Save as figures/<name>.pdf; include it with \\includegraphics{<name>}."""
-    FIGURES_DIR.mkdir(exist_ok=True)
-    path = FIGURES_DIR / f"{name}.pdf"
+def save(fig: plt.Figure, outfile: str | Path) -> Path:
+    """Save to outfile (usually figures/<name>.pdf, included with
+    \\includegraphics{<name>}) and close the figure."""
+    path = Path(outfile)
+    path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(path)
     plt.close(fig)
     print(f"Wrote {path}")
