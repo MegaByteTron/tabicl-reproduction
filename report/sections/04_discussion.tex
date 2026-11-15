@@ -1,59 +1,79 @@
 % !TEX root = ../report_template.tex
-\section{Discussion}\label{sec:discussion}
-% 2 points.
 
-\subsection{\tabicl{} method overview}\label{sec:method}
-% Moved here from 1.1.1 (how the prior generates tables), to use in this
-% section. 1.1.1 now only describes what the generated tables look like and
-% refers here with \Cref{sec:method}.
-% Also moved from section 1 (1.3, 1.4): how the model handles different
-% shapes, and how our prior differs from the paper's.
-% Every column is embedded with the same weights, a row-wise transformer
-% merges any number of columns into a fixed-size row vector, and in-context
-% learning attends over any number of training rows. The column order still
-% matters: each column is embedded together with the columns one and three
-% places further on, and the row-wise transformer encodes the column
-% positions; the prior therefore shuffles the columns of every table
-% (App.~E.13).
-% Our prior differs from the paper's: it draws the number of features
-% log-uniformly instead of uniformly, allows up to 100 categories instead of
-% fewer than 10 (App.~E.3), and has no filter for graphs in which features
-% and label share no ancestor (Sec.~5).
-% The model is pretrained only on synthetic tables, drawn from a \emph{prior}:
-% a program that defines a distribution over datasets
-% \citep{muller2022pfn,qu2026tabiclv2}. We use the prior of \nanotabicl{}
-% \citep{nanotabicl}, a slightly simplified version of the \tabicl{} prior
-% (\citealt{qu2026tabiclv2}, Sec.~5 and App.~E). For each table it draws a
-% random graph of 2 to 32 nodes; each node applies one of eight random function
-% types (e.g.\ neural networks, tree ensembles, Gaussian processes) to its
-% parents, or holds random points if it has none. Features and label are read
-% from random nodes; categorical columns and the label come from node values by
-% nearest-center assignment or by sampling from a softmax. A table whose label a
-% small ExtraTrees model cannot predict better than a constant is drawn again
-% (App.~E.14), so every table has some signal.
-%
-% With our settings, a table has 320 to 2,048 training rows (80\,\% of 400 to
-% 2,560 rows, log-uniform), 2 to 100 features (log-uniform) and one
-% classification label whose number of classes is drawn uniformly from 2 to 10.
-% The share of categorical columns is drawn from $[-0.5, 1.2]$ and
-% clipped to $[0, 1]$: 41\,\% on average, and at least 29\,\% of the tables have
-% none. A categorical column is drawn with 2 to 100 categories (some can stay
-% empty) and given to the model as integer codes. For evaluation we use 1,600 saved prior tables.
-% The method of the paper \citep{qu2026tabiclv2}, briefly: what does the model
-% approximate (posterior predictive, \citealt{muller2022pfn}), and how do the
-% architecture and the prior achieve it?
+\section{Discussion}
+\label{sec:discussion}
+\label{sec:method}
+\label{sec:challenges}
 
-\todo{what the model approximates; architecture and prior}
+The previous section shows that our prototype can compete with
+classical baselines on synthetic and real tables within a limited
+training budget. However, its performance varies across datasets
+and metrics. These results raise two questions: why does training
+on synthetic data transfer to real tasks, and where does this
+approach still fall short?
 
-\subsection{Challenges and limitations}\label{sec:challenges}
-% Why is the task not trivial?
-% Why would a model trained only on synthetic data be interesting?
-% Limitations of our prototype (model size, compute, datasets).
+TabICLv2 learns to predict unknown labels from labeled examples
+across many synthetic tasks. From the prior-data fitted network
+(PFN) perspective, it approximates the posterior predictive
+distribution induced by the prior: a probability distribution
+over unknown labels given the observed examples
+\citep{muller2022pfn,qu2026tabiclv2}.
+The prior determines the relationships between features and labels
+encountered during training. The architecture builds column
+representations, combines them into row representations, and uses
+in-context learning to predict test labels. On a new dataset, the
+labeled rows provide context, while the pretrained model weights
+remain fixed.
 
-\todo{why it is hard; why synthetic-only training is interesting; limitations}
+This approach is interesting because synthetic tasks can be
+generated continuously without collecting real labels for every
+pretraining task. The same pretrained model can then be applied
+to different datasets. However, generating more data does not
+necessarily make it representative of real problems. Our dataset
+analysis found that 21 of the 57 OpenML datasets have fewer training
+rows than the range used in pretraining. Some also contain missing
+values or strong class imbalance. Such differences may affect
+transfer. The challenge is therefore both to learn from synthetic
+tasks and to ensure that these tasks cover important properties
+of real data.
 
-\subsection{Summary and future work}\label{sec:summary}
-% What does (not) work, and why (not)?
-% What is possible with our compute budget? What would we try next?
+Our five-hour run shows that this approach is feasible at the scale
+of our project. The model achieved mean ROC AUC values of 0.890 on
+prior tables and 0.901 on OpenML, slightly above the strongest
+baseline for each source. However, the differences are small and
+the confidence intervals overlap, so they do not establish a clear
+advantage. Lower log loss and calibration error suggest that the
+model produces useful probability estimates within this evaluation.
 
-\todo{what works and what does not; next steps}
+These strengths do not mean that the model handles every class or
+dataset well. On volcanoes-a1, it achieved a high AUC but often
+predicted the majority class, resulting in low balanced accuracy.
+On hill-valley, logistic regression performed much better than our
+prototype. These examples show why several metrics and individual
+datasets need to be examined alongside the averages. A mismatch
+between the prior and a particular task is one possible
+explanation, but our experiments do not isolate the causes of
+these failures.
+
+There are also limitations in the evaluation. The best checkpoint
+was selected using an OpenML validation split, so results on these
+datasets may be optimistic. A second split provides additional
+evidence, but it uses the same datasets and is not a fully
+independent test. We also evaluated only one training run, and the
+baselines were not extensively tuned. The absence of a sustained
+rise in validation loss is encouraging, but it does not rule out
+overfitting to the validation tasks through checkpoint selection.
+
+With the available compute budget, our next priority would be a
+more independent evaluation, followed by targeted experiments.
+We would test on datasets not used for checkpoint selection and,
+if possible, repeat training with another random seed. We could
+then change one aspect of the prior at a time, such as including
+smaller contexts, stronger class imbalance, or missing values.
+This would help identify which changes actually improve transfer.
+Continued pretraining on real data is another possible direction:
+\citet{qu2026tabiclv2} discuss evidence that real-data pretraining
+can be competitive and can complement synthetic pretraining.
+However, this has not been tested in our project. For now, smaller
+controlled experiments would help us understand the remaining
+weaknesses before committing to a longer training run.
