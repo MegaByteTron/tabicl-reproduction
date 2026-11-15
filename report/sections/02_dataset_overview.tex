@@ -27,8 +27,7 @@ classification label whose number of classes is drawn uniformly from 2 to 10.
 The share of categorical columns is drawn from $[-0.5, 1.2]$ and
 clipped to $[0, 1]$: 41\% on average, and at least 29\% of the tables have
 none. A categorical column has 2 to 100 categories, given to the model as
-integer codes. For evaluation we use 1,600 saved prior tables; in them, the
-median share of the largest class in the training rows is 0.39.
+integer codes. For evaluation we use 1,600 saved prior tables.
 
 \paragraph{Real tables.}
 The real benchmark, \tabpfnval{}, consists of the 57 classification
@@ -36,8 +35,7 @@ datasets that \citet{hollmann2025tabpfn} used to develop \tabpfn{}
 (Supplementary Table~5). That list already leaves out datasets with more than
 500 features or more than 10 classes. \tabicl{} uses these datasets for its
 ablations; the paper speaks of 60 (\citealt{qu2026tabiclv2}, Fig.~10), but the
-supplementary table lists 57. Like the paper, we use at most 2,048 training
-rows per dataset and two random train/test splits. The datasets come from
+supplementary table lists 57. The datasets come from
 many domains, for example medicine (\dataset{heart-c}), credit
 (\dataset{heloc}) and criminal justice (\dataset{compas-two-years}). They have
 2 to 299 features (median 16) and 42 to 2,048 training rows (median 763);
@@ -93,7 +91,89 @@ drawn, because a class can end up with no training rows.)
 % Problems that could distort the evaluation: degenerate synthetic tables,
 % duplicates between train and test rows, class imbalance, outliers.
 
-\todo{what we checked and found}
+\paragraph{Splits.}
+For each OpenML dataset, 20\% of the rows (rounded) form the test set, and a
+random sample of at most 2,048 of the other rows forms the training set; for
+the 19 datasets with more than 2,560 rows, some rows are not used. The split
+is stratified by class, and we use two splits with different random seeds, as
+the paper does (\citealt{qu2026tabiclv2}, Fig.~10). Rows without a label are
+dropped, which only happens in \dataset{Midwest\_Survey\_nominal} (284 of
+2,778 rows). \dataset{birds} has 19 label columns, one per bird species; we
+predict the most common species (Swainson's thrush) and drop the other label
+columns from the features. Prior rows are generated in random order, so the
+first 80\% of a table are a random training set. The 1,600 saved prior tables
+use a different random seed than pretraining.
+
+\paragraph{Checks.}
+We checked every evaluation table for problems that could distort the
+evaluation (\Cref{tab:quality}). The most common problem on the OpenML
+datasets is test rows that also appear among the training rows: 22 of 57
+datasets have them, 14\% of all OpenML test rows (prior: 497 of 1,600 tables,
+20\%). This is not a mistake in the split. Tables with few discrete features
+repeat rows naturally: \dataset{Titanic} has three features and only 14
+distinct rows, so 439 of its 440 test rows (split~0) repeat a training row.
+Other datasets contain many repeated rows to begin with: \dataset{mc1} has
+9,466 rows but only 2,006 distinct ones, so 78\% of its test rows are
+duplicates. Duplicates do not always give the answer away. In \dataset{Titanic}
+most repeated rows appear in the training rows with both labels, so the best
+any model can do is predict the majority label of each row, which gives 78\%
+accuracy. In \dataset{compas-two-years}, for 112 of the 1,056 test rows every
+identical training row has the other label. We keep all duplicates, since
+removing them would change the benchmark.
+
+In 6 OpenML datasets the largest class holds more than 90\% of the training
+rows, up to 99.3\% in \dataset{mc1}. Always predicting that class already
+gives over 90\% accuracy, so accuracy alone is misleading on these tables
+(see the metrics in \Cref{sec:metrics}). The prior is more balanced (27 of
+1,600 tables this skewed; median share of the largest class 0.39 vs.\ 0.56),
+partly because its tables have more classes.
+
+To find outliers, we measure each test value in standard deviations of its
+column's training rows ($z$), as the model scales its input. 13 OpenML
+datasets (16 in split~1) and 541 prior tables have a test value with
+$|z| > 10$. In 2 OpenML datasets (\dataset{page-blocks}, \dataset{birds}; 3 in
+split~1) and 54 prior tables, $|z|$ exceeds 100, where the model clips the
+value; in the prior it reaches about $10^8$. Not every large $|z|$ is a real
+outlier: in a 0/1 column with a single 1 among 2,048 training rows, a 1 in the
+test rows has $|z| \approx 45$. 12 OpenML datasets also have missing values,
+up to 72\% of all cells in \dataset{cjs} (how we fill them:
+\Cref{sec:preprocessing}).
+
+Smaller problems: 244 prior tables and 8 OpenML datasets (7 in split~1) have
+a column with only one value in the training rows, which carries no
+information; the model sets it to zero (\Cref{sec:preprocessing}). In 9 prior
+tables a class appears only in the test rows. The \tabicl{} prior discards
+such tables (\citealt{qu2026tabiclv2}, App.~E.13); we keep them and leave
+these rows out of the metrics. No table has only one class.
+
+\begin{table}[t]
+  \centering
+  \caption{Number of evaluation tables with each problem. Duplicates and $z$
+    are counted on the tables the model sees (after encoding and imputation);
+    $z$ is a test value in standard deviations of its column's training rows.
+    Class shares are measured on the training rows. Missing values are counted
+    in the raw dataset (so the same for both splits); the prior has none.}
+  \label{tab:quality}
+  \begin{tabular}{lrrr}
+    \toprule
+    & Prior & \multicolumn{2}{c}{OpenML} \\
+    \cmidrule(lr){3-4}
+    & & split 0 & split 1 \\
+    \midrule
+    Tables & 1,600 & 57 & 57 \\
+    Test row equal to a training row & 497 & 22 & 22 \\
+    \quad \ldots{} some with a different label & 189 & 7 & 8 \\
+    Share of test rows that are duplicates & 20.0\% & 14.1\% & 13.9\% \\
+    Class only in the test rows & 9 & 0 & 0 \\
+    Column with one value in training & 244 & 8 & 7 \\
+    Largest class above 90\% & 27 & 6 & 6 \\
+    Test value with $|z| > 10$ & 541 & 13 & 16 \\
+    Test value with $|z| > 100$ & 54 & 2 & 3 \\
+    Missing values & -- & 12 & 12 \\
+    Median share of the largest class & 0.39 & 0.56 & 0.56 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
 \subsection{Preprocessing and representation}\label{sec:preprocessing}
 % Normalization, categorical features, missing values: what and why.
