@@ -22,7 +22,6 @@ from style import (
     INK,
     INK_MUTED,
     RC_PARAMS,
-    SOURCE_LABELS,
     TEXT_WIDTH_IN,
     save,
     use_style,
@@ -38,6 +37,12 @@ STATS = Path(__file__).resolve().parents[1] / "data_stats.csv"
 # known OpenML tables with 3, 2 and 6 classes.
 N_PRIOR_EXAMPLES = 3
 OPENML_EXAMPLES = ["penguins", "heart-statlog", "breast-tissue"]
+
+# Benchmark names in italic, as in the report text (\tabpfnval).
+LEGEND = {
+    "prior_val": r"Prior ($\mathit{prior\_val}$)",
+    "tabpfn_val": r"OpenML ($\mathit{tabpfn\_val}$)",
+}
 
 # Prior filled in gray, OpenML as an outline, so the model colors of the
 # Section 3 figures keep their meaning.
@@ -137,7 +142,7 @@ def plot_shapes(stats: pd.DataFrame, outfile: Path):
                 raise ValueError(f"{column} outside the bins: {list(outside)}")
             # Shares, not counts: 1,600 prior tables vs. 57 OpenML tables.
             weights = np.full(len(values), 1 / len(values))
-            ax.hist(values, bins, weights=weights, label=SOURCE_LABELS[source], **style)
+            ax.hist(values, bins, weights=weights, label=LEGEND[source], **style)
         for x in limits:
             ax.axvline(x, color=INK_MUTED, linestyle="--", linewidth=0.8)
         if column != "n_classes":
