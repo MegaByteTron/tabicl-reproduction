@@ -66,8 +66,8 @@ def example_tables() -> tuple[list[TableSample], list[str]]:
 
 def plot_examples(tables: list[TableSample], titles: list[str], outfile: Path):
     """Prior tables in the top row, OpenML tables below, in the look of the
-    other report figures (font, sizes, colors). The table sizes go in the
-    caption, not in subtitles."""
+    other report figures (font, sizes, colors), without the size subtitles
+    (the report text gives the sizes that matter)."""
     look: dict[RcKeyType, Any] = {
         **RC_PARAMS,
         "axes.titleweight": "normal",  # Computer Modern has no bold

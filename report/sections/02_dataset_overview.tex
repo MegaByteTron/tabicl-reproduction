@@ -26,8 +26,8 @@ With our settings, a table has 320 to 2,048 training rows (80\% of 400 to
 classification label whose number of classes is drawn uniformly from 2 to 10.
 The share of categorical columns is drawn from $[-0.5, 1.2]$ and
 clipped to $[0, 1]$: 41\% on average, and at least 29\% of the tables have
-none. A categorical column has 2 to 100 categories, given to the model as
-integer codes. For evaluation we use 1,600 saved prior tables.
+none. A categorical column is drawn with 2 to 100 categories (some can stay
+empty) and given to the model as integer codes. For evaluation we use 1,600 saved prior tables.
 
 \paragraph{Real tables.}
 The real benchmark, \tabpfnval{}, consists of the 57 classification
@@ -117,8 +117,8 @@ Other datasets contain many repeated rows to begin with: \dataset{mc1} has
 duplicates. Duplicates do not always give the answer away. In \dataset{Titanic}
 most repeated rows appear in the training rows with both labels, so the best
 any model can do is predict the majority label of each row, which gives 78\%
-accuracy. In \dataset{compas-two-years}, for 112 of the 1,056 test rows every
-identical training row has the other label. We keep all duplicates, since
+accuracy. In \dataset{compas-two-years}, 552 of the 1,056 test rows repeat a training
+row, and for 112 of them every identical training row has the other label. We keep all duplicates, since
 removing them would change the benchmark.
 
 In 6 OpenML datasets the largest class holds more than 90\% of the training
@@ -131,8 +131,8 @@ partly because its tables have more classes.
 To find outliers, we measure each test value in standard deviations of its
 column's training rows ($z$), as the model scales its input. 13 OpenML
 datasets (16 in split~1) and 541 prior tables have a test value with
-$|z| > 10$. In 2 OpenML datasets (\dataset{page-blocks}, \dataset{birds}; 3 in
-split~1) and 54 prior tables, $|z|$ exceeds 100, where the model clips the
+$|z| > 10$. In 2 OpenML datasets (\dataset{page-blocks}, \dataset{birds}; also
+\dataset{cjs} in split~1) and 54 prior tables, $|z|$ exceeds 100, where the model clips the
 value; in the prior it reaches about $10^8$. Not every large $|z|$ is a real
 outlier: in a 0/1 column with a single 1 among 2,048 training rows, a 1 in the
 test rows has $|z| \approx 45$. 12 OpenML datasets also have missing values,
@@ -141,7 +141,7 @@ up to 72\% of all cells in \dataset{cjs} (how we fill them:
 
 Smaller problems: 244 prior tables and 8 OpenML datasets (7 in split~1) have
 a column with only one value in the training rows, which carries no
-information; the model sets it to zero (\Cref{sec:preprocessing}). In 9 prior
+information (handled in \Cref{sec:preprocessing}). In 9 prior
 tables a class appears only in the test rows. The \tabicl{} prior discards
 such tables (\citealt{qu2026tabiclv2}, App.~E.13); we keep them and leave
 these rows out of the metrics. No table has only one class.
@@ -162,7 +162,7 @@ these rows out of the metrics. No table has only one class.
     \midrule
     Tables & 1,600 & 57 & 57 \\
     Test row equal to a training row & 497 & 22 & 22 \\
-    \quad \ldots{} some with a different label & 189 & 7 & 8 \\
+    \quad \ldots{} some only with another label & 189 & 7 & 8 \\
     Share of test rows that are duplicates & 20.0\% & 14.1\% & 13.9\% \\
     Class only in the test rows & 9 & 0 & 0 \\
     Column with one value in training & 244 & 8 & 7 \\
@@ -180,11 +180,78 @@ these rows out of the metrics. No table has only one class.
 % Which transformation we pass to load_data.
 % Can the model handle tables of different size or shape?
 
-\todo{preprocessing and why}
+\paragraph{Pipeline.}
+(1) Categorical columns of the OpenML datasets become integer codes, the form
+in which the prior produces its categorical columns
+(\citealt{qu2026tabiclv2}, App.~E.13). (2) Labels become $0, \dots, C-1$,
+using the classes of the training rows. (3) A missing value is replaced by the
+mean of its column's training rows (0 if the column has no value there), as in \tabicl{}
+(\citealt{qu2026tabiclv2}, Sec.~8). The baselines get the table after this
+step; we pass no transformation to the data loader, since steps (1) to (3)
+are built into loading. (4) Inside our model, each column is standardized with
+the mean and standard deviation of its training rows; a column with a single
+value in the training rows becomes 0, and values are clipped to $\pm 100$.
+$k$-NN and logistic regression standardize the columns themselves, since they
+depend on scale; the tree models do not need it.
+
+\paragraph{Why.}
+Everything estimated from the data (means, standard deviations, the label
+mapping) comes from the training rows only, so no information from the test
+rows leaks in; only the list of category codes is built on the whole table,
+which uses no labels. Standardizing puts columns with different units on one
+scale, and the clip bounds the extreme values of \Cref{sec:quality} (up to
+$|z| \approx 10^8$ in the prior). These steps are close to the authors'
+code,\footnote{\url{https://github.com/soda-inria/tabicl}} which also encodes
+categories as integers, fills missing numbers with the mean, drops columns
+with a single value and clips standardized values to $\pm 100$. The main
+differences: their code gives a missing category its own code (we fill it with
+the mean code, which is not a real category), and it shrinks values beyond 4
+standard deviations and, in half of its ensemble members, applies a power
+transform; we leave both out. Because the model depends on the column order,
+the prior shuffles the columns of every table (App.~E.13), and at test time
+we average over eight column orders (\Cref{sec:metrics}).
+
+\paragraph{Different sizes and shapes.}
+One model handles every table in \Cref{fig:table_shapes}, because its weights
+are shared over rows and columns (\citealt{qu2026tabiclv2}, Sec.~3): every
+column is embedded with the same weights, a row-wise transformer merges any
+number of columns into a fixed-size row vector, and in-context learning
+attends over any number of training rows. The column order still matters:
+each column is embedded together with the columns one and three places
+further on, and the row-wise transformer encodes the column positions. There are two limits. The
+output has 10 classes; \tabicl{} splits a label with more classes into
+several digits with at most 10 values each (App.~A.3), which we do not
+implement. And the 21 small and 3 wide OpenML datasets of
+\Cref{sec:exploration} lie outside the sizes the model was trained on.
 
 \subsection{Synthetic vs.\ real data and open questions}\label{sec:questions}
 % How similar are the synthetic tables to real ones?
 % What could a machine learning model answer about the data,
 % and what would a human typically ask?
 
-\todo{synthetic vs.\ real; questions a model vs.\ a human would ask}
+\paragraph{Synthetic vs.\ real.}
+\citet{qu2026tabiclv2} note that large-scale pretraining on real tables can
+be competitive (TabDPT) and that continued pretraining on real tables can
+improve \tabpfn{} (Real-TabPFN), which suggests that synthetic tables do not
+capture everything. In our data the gap is visible (\Cref{fig:table_shapes},
+\Cref{tab:quality}): real tables are more often binary and more imbalanced,
+have more extreme sizes, and have missing values, which the prior never
+produces. Real columns also carry meaning, such as age, cholesterol or race,
+which the model ignores (\citealt{qu2026tabiclv2}, Sec.~8). Our prior also
+differs from the paper's: it draws the number of features log-uniformly
+instead of uniformly, allows up to 100 categories instead of fewer than 10
+(App.~E.3), and has no filter for graphs in which features and label share no
+ancestor (Sec.~5). How much
+the gap matters is measured in \Cref{sec:results}.
+
+\paragraph{Questions.}
+A model trained like ours answers one kind of question: given a row, which
+class is it, and how sure is the model? For the credit dataset
+\dataset{heloc}: which of its two classes does an applicant belong to, and
+how likely is that? A person usually asks
+more. Why was this applicant rejected? Is the model fair, for example to
+defendants of different race in \dataset{compas-two-years}, whose features
+include race? And what would change if something were different: would a
+patient in \dataset{heart-c} be healthier with lower cholesterol? Our model
+learns which feature values go together with which label, not what causes the
+label, so it cannot answer such what-if questions.
