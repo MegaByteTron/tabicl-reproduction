@@ -63,6 +63,18 @@ uv run python report/plots/make_figures.py outputs/runs/<date>/<time>
 | `roc_auc_by_category` | mean ROC AUC by number of classes, features and training rows |
 | `confusion_matrices` | ours vs. the best baseline on the OpenML table we win most / lose most |
 
+The Section 2 figures need the data, not a run, so they have their own command:
+
+```bash
+uv run python -m tabicl_reproduction.explore   # report/data_stats.csv
+uv run python report/plots/data_overview.py
+```
+
+| Figure | Shows |
+|---|---|
+| `example_tables` | `show()` on the first 3 saved prior tables and 3 OpenML tables |
+| `table_shapes` | share of tables per training rows, features and classes, prior vs. OpenML |
+
 The plot code is in `plots/training_curves.py` (run logs), `plots/comparison.py`
 (results CSVs) and `plots/confusion.py`; every function takes the data and an
 `outfile`. They share `plots/style.py`: same fonts, colors (one per model) and

@@ -88,7 +88,7 @@ discuss these limitations in \Cref{sec:challenges}.
 % Which metrics are meaningful, and why?
 % How do we aggregate over many datasets of different difficulty?
 
-All models are scored on the same tables (\Cref{sec:quality}): 1{,}600
+All models are scored on the same tables (\Cref{sec:splits}): 1{,}600
 synthetic tables from our prior that were not used in training, and the 57
 OpenML datasets of \tabpfnval{} on two fixed train/test splits each. No
 table had to be skipped.
@@ -364,15 +364,15 @@ table, it still wins on 602 prior tables and 21 OpenML datasets.
 
 Its largest losses on OpenML share one property: the tables are very small.
 They are two software defect prediction tables from the PROMISE repository
-(\href{https://www.openml.org/d/1071}{mw1},
-\href{https://www.openml.org/d/1060}{ar3}) and an example table from a
+(\href{https://www.openml.org/d/1071}{\dataset{mw1}},
+\href{https://www.openml.org/d/1060}{\dataset{ar3}}) and an example table from a
 statistics textbook
-(\href{https://www.openml.org/d/465}{analcatdata\_cyyoung8092}), all
+(\href{https://www.openml.org/d/465}{\dataset{analcatdata\_cyyoung8092}}), all
 available on OpenML \citep{vanschoren2013openml}. On them, the prototype is
 0.05 to 0.11 ROC AUC behind the random forest, but they have only 50 to 322
 training rows and 13 to 81 test rows, so a few misranked test rows already
 change the score considerably. A different kind of failure is
-\href{https://www.openml.org/d/1479}{hill-valley}, where each row holds 100
+\href{https://www.openml.org/d/1479}{\dataset{hill-valley}}, where each row holds 100
 points of a curve and the class says whether the curve forms a hill or a
 valley. A linear model separates these classes well: logistic regression
 reaches 0.949, while the prototype and the tree ensembles stay close to
@@ -382,11 +382,11 @@ regression falls behind the other three models in that group, and the gap
 between the prototype and the tree ensembles shrinks to at most 0.005.
 
 The largest wins come from tables where interactions between features
-matter, such as \href{https://www.openml.org/d/40646}{GAMETES\_Epistasis}, simulated
+matter, such as \href{https://www.openml.org/d/40646}{\dataset{GAMETES\_Epistasis}}, simulated
 genetics data in which the label depends on an interaction between features
 rather than on single features
 (0.688 vs.\ 0.603 for the random forest). Finally, a good ranking does not
-always mean good class decisions: on \href{https://www.openml.org/d/1527}{volcanoes-a1}, a
+always mean good class decisions: on \href{https://www.openml.org/d/1527}{\dataset{volcanoes-a1}}, a
 table for detecting volcanoes in radar images of Venus (5 classes, highly
 imbalanced), the prototype ranks as well as the trees (ROC AUC 0.949 vs.\
 0.957 for gradient boosting), but predicts almost only the majority class,

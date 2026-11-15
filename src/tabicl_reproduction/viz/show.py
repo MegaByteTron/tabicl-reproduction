@@ -1,7 +1,8 @@
 import math
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from pathlib import Path
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -9,6 +10,7 @@ import torch
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
+from matplotlib.typing import RcKeyType
 from sklearn.base import TransformerMixin
 from sklearn.decomposition import PCA
 
@@ -43,6 +45,8 @@ def show(
     panel_size: float = 2.4,
     max_points: int = 400,
     robust_limits: bool = True,
+    subtitles: bool = True,
+    rc: Mapping[RcKeyType, Any] | None = None,
 ) -> Figure:
     """Plot one or more tables as a grid of 2D scatter plots.
 
@@ -72,6 +76,10 @@ def show(
             so a few outliers don't squash the rest; points outside are
             drawn at the edge. Set False to show the full range, e.g. when
             looking at outliers.
+        subtitles: show the table size (rows, features, classes) under each
+            title. Turn off when the caption gives the sizes.
+        rc: Matplotlib settings applied on top of the default look, e.g. the
+            report's font or a centered, non-bold title.
 
     Returns:
         The matplotlib figure, for further changes or plt.show(). With
@@ -90,7 +98,7 @@ def show(
     nrows = math.ceil(n / ncols)
 
     # Apply settings without affecting global Matplotlib configuration.
-    with plt.rc_context(RC_PARAMS):
+    with plt.rc_context({**RC_PARAMS, **(rc or {})}):
         fig, axes = plt.subplots(
             nrows,
             ncols,
@@ -102,7 +110,14 @@ def show(
             for i, (ax, sample) in enumerate(zip(axes.flat, samples, strict=False)):
                 title = titles[i] if titles is not None else _default_title(sample, i)
                 _draw_panel(
-                    ax, sample, title, overlays, projection, max_points, robust_limits
+                    ax,
+                    sample,
+                    title,
+                    overlays,
+                    projection,
+                    max_points,
+                    robust_limits,
+                    subtitles,
                 )
             for ax in axes.flat[n:]:
                 ax.set_axis_off()
@@ -162,6 +177,7 @@ def _draw_panel(
     projection: TransformerMixin,
     max_points: int,
     robust_limits: bool,
+    subtitles: bool,
 ) -> None:
     X_train, y_train, X_test, y_test = (to_numpy(t) for t in sample)
     view = make_view(X_train, y_train, projection)
@@ -211,6 +227,12 @@ def _draw_panel(
     if unseen.any():
         ax.scatter(*P_test[unseen].T, s=18, marker="x", color=UNSEEN, zorder=4)
 
+    ax.set_xlabel(view.xlabel)
+    ax.set_ylabel(view.ylabel)
+    if not subtitles:
+        ax.set_title(title, pad=TITLE_GAP)
+        return
+
     # Subtitle sits just above the plot, title above it. Both are placed
     # in points, so the spacing stays the same for any panel size.
     n_classes = len(np.unique(y_train))
@@ -226,9 +248,7 @@ def _draw_panel(
         va="bottom",
     )
     subtitle_height = 1.2 * SUBTITLE_SIZE  # one line of text
-    ax.set_title(title, loc="left", pad=SUBTITLE_OFFSET + subtitle_height + TITLE_GAP)
-    ax.set_xlabel(view.xlabel)
-    ax.set_ylabel(view.ylabel)
+    ax.set_title(title, pad=SUBTITLE_OFFSET + subtitle_height + TITLE_GAP)
 
 
 def _add_legend(fig: Figure, samples: list[TableSample]) -> None:
