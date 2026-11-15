@@ -33,8 +33,8 @@ MODEL_LABELS = {
     "tabicl_model": "Ours (last step)",
 }
 SOURCE_LABELS = {
-    "prior_val": r"Prior ($\mathtt{prior\_val}$)",
-    "tabpfn_val": r"OpenML ($\mathtt{tabpfn\_val}$)",
+    "prior_val": r"Prior ($\mathit{prior\_val}$)",
+    "tabpfn_val": r"OpenML ($\mathit{tabpfn\_val}$)",
 }
 
 

@@ -27,6 +27,12 @@
 \usepackage{placeins}    % \FloatBarrier keeps floats inside a subsection
 \usepackage{booktabs}    % \toprule, \midrule, \bottomrule in tables
 \usepackage{subcaption}  % subfigures (a), (b) side by side
+\usepackage{enumitem}    % less space around list items, to fit 10 pages
+\setlist[itemize]{topsep=3pt, itemsep=1pt, parsep=0pt}
+% Less space around figures and tables, for the same reason.
+\setlength{\textfloatsep}{12pt plus 2pt minus 2pt}
+\setlength{\floatsep}{10pt plus 2pt minus 2pt}
+\setlength{\intextsep}{10pt plus 2pt minus 2pt}
 \graphicspath{{figures/}}
 
 \input{macros}

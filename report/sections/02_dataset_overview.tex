@@ -13,9 +13,9 @@ The model is pretrained only on synthetic tables drawn from a \emph{prior}:
 a program that generates random tables, each with its own randomly drawn
 rules linking the features to the label \citep{muller2022pfn,qu2026tabiclv2}.
 We use the slightly simplified prior of \nanotabicl{} \citep{nanotabicl}; how
-it generates tables is explained in \Cref{sec:method}. A table whose label
-cannot be predicted better than by a constant is discarded, so no table is
-pure noise. With our settings, the prior generates:
+it generates tables is explained in \Cref{sec:method}. A table whose label a
+small tree ensemble cannot predict better than a constant is drawn again,
+so no table is pure noise. With our settings, the prior generates:
 \begin{itemize}
   \item \textbf{Sizes:} 400 to 2{,}560 rows (log-uniform), of which 80\,\%
     are training rows (320 to 2{,}048), and 2 to 100 features
@@ -46,7 +46,8 @@ medicine (\dataset{heart-c}), credit (\dataset{heloc}) and criminal justice
     299 features (median 16).
   \item \textbf{Feature types:} numerical and categorical columns; 32
     datasets have categorical columns stored as text (17\,\% of all
-    columns), and 12 have missing values.
+    columns; categories stored as numbers are not counted), and 12 have
+    missing values.
   \item \textbf{Targets:} one label with 2 to 10 classes; 32 of the 57
     datasets are binary.
 \end{itemize}
@@ -67,7 +68,7 @@ directions, so overlap here does not mean the classes cannot be separated.
 \begin{figure}[t]
   \centering
   \includegraphics[width=\linewidth]{example_tables}
-  \caption{Example tables, drawn with \texttt{show}. Top: the first three saved prior tables (not
+  \caption{Example tables. Top: the first three saved prior tables (not
     hand-picked). Bottom: three OpenML tables with 3, 2 and 6 classes. Each
     panel shows one table, projected onto the first two principal components
     of its standardized training rows. Filled markers are training rows, hollow markers are
@@ -121,34 +122,32 @@ evaluation; \Cref{tab:quality} lists how many tables have each.
 \begin{table}[!ht]
   \centering
   \small
-  \begin{tabular}{lrr}
+  \setlength{\tabcolsep}{4.5pt}  % fits the text width with the problem column
+  \begin{tabular}{llrr}
     \toprule
-    & Prior & OpenML \\
-    & (1{,}600 tables) & (57 datasets) \\
+    & & Prior & OpenML \\
+    & & (1{,}600 tables) & (57 datasets) \\
     \midrule
-    \multicolumn{3}{l}{\emph{Duplicates}} \\
-    Test rows identical to a training row & 497 (31\,\%) & 22 (39\,\%) \\
-    \quad of these, some with a different label & 189 (12\,\%) & 7 (12\,\%) \\
-    \quad share of all test rows & 20.0\,\% & 14.1\,\% \\
+    Duplicates & Test row identical to a training row & 497 (31\,\%) & 22 (39\,\%) \\
+    & \quad some only seen with another label & 189 (12\,\%) & 7 (12\,\%) \\
+    & \quad share of all test rows & 20.0\,\% & 14.1\,\% \\
     \midrule
-    \multicolumn{3}{l}{\emph{Class imbalance}} \\
-    Largest class above 90\,\% of training rows & 27 (2\,\%) & 6 (11\,\%) \\
-    \quad median share of the largest class & 0.39 & 0.56 \\
+    Class imbalance & Largest class above 90\,\% & 27 (2\,\%) & 6 (11\,\%) \\
+    & \quad median share of the largest class & 0.39 & 0.56 \\
     \midrule
-    \multicolumn{3}{l}{\emph{Outliers}} \\
-    Test value over 10 std.\ devs.\ from the mean & 541 (34\,\%) & 13 (23\,\%) \\
-    \quad over 100 std.\ devs.\ (clipped by the model) & 54 (3\,\%) & 2 (4\,\%) \\
+    Outliers & Test value over 10 std.\ devs. & 541 (34\,\%) & 13 (23\,\%) \\
+    & \quad over 100 (clipped by the model) & 54 (3\,\%) & 2 (4\,\%) \\
     \midrule
-    \multicolumn{3}{l}{\emph{Missing values}} \\
-    Missing values in the dataset & -- & 12 (21\,\%) \\
+    Missing values & Any cell missing & -- & 12 (21\,\%) \\
     \midrule
-    \multicolumn{3}{l}{\emph{Constant columns and unseen classes}} \\
-    Column with one value in the training rows & 244 (15\,\%) & 8 (14\,\%) \\
-    Class only in the test rows & 9 (1\,\%) & 0 \\
+    Constant columns & Column with one value in training & 244 (15\,\%) & 8 (14\,\%) \\
+    \midrule
+    Unseen classes & Class only in the test rows & 9 (1\,\%) & 0 \\
     \bottomrule
   \end{tabular}
   \caption{Evaluation tables with each problem of \Cref{sec:data_quality}:
-    number of tables (share in brackets), unless marked as a share or median.
+    number of tables (share of all tables in brackets), unless marked as a
+    share or median.
     Counted on the tables the model sees (after encoding and imputation),
     except missing values, which are counted in the raw datasets; class
     shares refer to the training rows. OpenML: split~0; split~1 differs by
@@ -162,8 +161,8 @@ evaluation; \Cref{tab:quality} lists how many tables have each.
     not a split error: some tables repeat rows naturally (\dataset{Titanic}
     has only 14 distinct rows) or contain many repeated rows to begin with
     (\dataset{mc1}). Duplicates do not always give the answer away: in
-    \dataset{Titanic}, repeated rows often occur with both labels, so no
-    model can exceed 78\,\% accuracy. We keep them, since removing them
+    \dataset{Titanic}, repeated rows often occur with both labels, so even
+    the best possible model reaches only about 78\,\% accuracy. We keep them, since removing them
     would change the benchmark.
   \item \textbf{Class imbalance:} in 6 OpenML datasets, the largest class
     holds more than 90\,\% of the training rows (up to 99.3\,\% in
@@ -216,8 +215,8 @@ only, so no information from the test rows leaks in.
     value becomes 0, and values are clipped to $\pm 100$, which bounds the
     extreme values of \Cref{sec:data_quality}.
 \end{itemize}
-The first three steps are built into data loading, so we pass no
-\texttt{transformation} to \texttt{load\_data}; the baselines receive the
+The first three steps are built into data loading, so we pass no extra
+transformation to the data loader; the baselines receive the
 tables after these steps. They are close to the authors'
 code,\footnote{\url{https://github.com/soda-inria/tabicl}} which also encodes
 categories as integers, fills missing numbers with the mean, drops constant
@@ -256,9 +255,9 @@ everything. How much the gap matters is measured in \Cref{sec:results}.
 
 A model like ours answers one kind of question: given a row, which class is
 it, and how sure is the model? For an applicant in the credit dataset
-\dataset{heloc}, it gives the probability of each credit outcome, and since
-our prototype is well calibrated (\Cref{sec:overall}), these probabilities
-are meaningful. A person typically asks more:
+\dataset{heloc}, it gives the probability of each credit outcome; on
+average, our prototype has the lowest calibration error of all models
+(\Cref{sec:overall}). A person typically asks more:
 \begin{itemize}
   \item \textbf{Why?} Which features led to rejecting this applicant?
   \item \textbf{Is it fair?} Does the model treat defendants of different

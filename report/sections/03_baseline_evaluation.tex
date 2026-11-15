@@ -22,7 +22,7 @@ strongest methods for tabular classification; on medium-sized datasets they
 outperform deep learning models trained per dataset
 \citep{grinsztajn2022tree}. \tabpfn{} and \tabicl{} report better results
 than tuned tree ensembles \citep{hollmann2025tabpfn,qu2026tabiclv2}, which
-makes these the natural reference for our much smaller prototype.
+makes tree ensembles the natural reference for our much smaller prototype.
 $k$-NN and logistic regression add reference points for instance-based and
 linear decision rules. All four come from scikit-learn
 \citep{pedregosa2011sklearn}, are fitted on the training rows of each table
@@ -50,15 +50,14 @@ training loop modeled on nanoTabPFN \citep{pfefferle2025nanotabpfn}
 (schedule-free AdamW, gradient clipping, regular evaluation on real tables).
 Within our compute budget, we train a model with 5.7 million parameters
 (embedding size 96; 2, 2 and 4 blocks in the column, row and in-context
-stages), 4.8 times fewer than the original \tabicl{} size in \nanotabicl{},
+stages), about a fifth of the original \tabicl{} size in \nanotabicl{},
 for 5~hours on one A100 GPU, on about 207{,}000 prior tables (25{,}840
 optimizer steps of 8 tables, processed one table at a time). As in the paper, it sees only synthetic tables
 in training. We evaluate the checkpoint with the lowest log loss on
 \tabpfnval{}, measured every 100 steps (step 23{,}900), and average its
 predictions over 8 random column orders, since its output depends on the
-column order. Compared to the paper, our model is much smaller, trained far
-shorter, and leaves out most of the official ensembling and preprocessing
-(\Cref{sec:challenges}).
+column order. What it leaves out compared to the paper is listed in
+\Cref{sec:challenges}.
 
 \subsection{Evaluation metrics}\label{sec:metrics}
 % Which metrics are meaningful, and why?
@@ -104,7 +103,7 @@ how easy a table is, only on which model is better on it.
   \includegraphics[width=\linewidth]{training}
   \caption{The 5-hour training run. (a)~Training loss on the prior (moving
     average). (b)~Log loss on \tabpfnval{}; the dotted line marks the
-    evaluated checkpoint (\texttt{best.pt}, step 23{,}900). (c)~Mean ROC AUC
+    evaluated checkpoint (step 23{,}900). (c)~Mean ROC AUC
     on \tabpfnval{} (one column order), with the baselines as horizontal
     lines; the star is the evaluated checkpoint scored with 8 column
     orders.}
@@ -117,8 +116,11 @@ logistic regression within 500 steps, gradient boosting after about
 1{,}300 steps (5\,\% of the training) and the random forest at about step
 5{,}000, staying above it in 93\,\% of the later evaluations. After that,
 the ROC AUC hardly changes (0.894 to 0.900), while the validation log loss
-keeps falling until the end (0.378 to 0.358, \Cref{fig:training}b):
+falls only slowly, without a clear rise (0.378 to 0.358 with one column order,
+\Cref{fig:training}b; 0.354 with 8 orders):
 longer training mainly improved the probabilities, not the ranking.
+Averaging over 8 column orders does not change the ROC AUC of the selected
+checkpoint (0.896 with one and with 8 orders).
 
 \subsubsection{Overall comparison}\label{sec:overall}
 
@@ -135,13 +137,14 @@ boosting: upper quartile $+0.017$, lower quartile $-0.001$). Ranks give a
 clearer picture (last column of \Cref{tab:results}):
 on the prior tables, the prototype has the best mean rank (2.02 vs.\ 2.37)
 with non-overlapping 95\,\% intervals ($\pm 0.05$) and beats gradient boosting on 835 tables
-while losing on 518, so its lead on synthetic tables is consistent. On the
+while losing on 518 (247 ties), so its lead on synthetic tables is consistent. On the
 57 OpenML tables it also ranks best (2.04 vs.\ 2.41), but the intervals
 ($\pm 0.27$ and $\pm 0.25$) overlap: it is on par with the random forest rather than clearly better.
 
 \begin{table}[!ht]
   \centering
   \small
+  \setlength{\tabcolsep}{4pt}  % the seven columns fit the text width
   \input{tables/results}
   \caption{Mean scores per model on the prior and the OpenML tables (splits
     averaged first). Rank: mean rank by ROC AUC, 1 = best on a table. Best
@@ -155,8 +158,9 @@ while losing on 518, so its lead on synthetic tables is consistent. On the
   \includegraphics[width=\linewidth]{roc_auc_differences}
   \caption{Per-table difference in ROC AUC between our model and each
     baseline (positive: ours is better), on the prior and the OpenML tables.
-    Boxes show the middle half of the tables, whiskers 1.5 times its width
-    (outliers not drawn); right: tables won and lost.}
+    Boxes show the middle half of the tables; whiskers reach the last table
+    within 1.5 times the box width (outliers not drawn); right: tables won
+    and lost.}
   \label{fig:roc_auc_differences}
 \end{figure}
 
@@ -209,14 +213,17 @@ a loss on unseen tables. The risk is rather overfitting to the prior, i.e.\
 learning properties of synthetic tables that real ones lack. We check this
 with the log loss on the real \tabpfnval{} tables during training
 (\Cref{fig:training}a and b). Both losses fall quickly in the first
-5{,}000 steps; afterwards, the training loss keeps decreasing slowly (0.68
-to 0.62), while the validation loss flattens at about 0.36 without rising.
+5{,}000 steps; afterwards, the training loss keeps decreasing slowly (about
+0.68 to 0.62, averaged over 2{,}000 steps), while the validation loss falls
+only slowly (0.378 to 0.358), without a clear rise.
 There is thus no overfitting to the prior within our run, but further
 progress on synthetic tables carries over to real ones only marginally.
 
 A second risk is model selection on the first split of \tabpfnval{}. On the
 second split, which was not used for it, the prototype is even slightly
-better (ROC AUC 0.905 vs.\ 0.896), so this effect is small. New tables in
+better (ROC AUC 0.905 vs.\ 0.896). This split uses the same datasets, but
+the 1{,}600 prior tables, which were not used for the selection either,
+show the same lead (\Cref{sec:overall}). New tables in
 every step, a real validation set and evaluation prior tables with their
 own seed keep overfitting in check.
 
@@ -254,7 +261,7 @@ vs.\ 0.603). Finally, a good ranking does not guarantee good decisions: on
 \href{https://www.openml.org/d/1527}{\dataset{volcanoes-a1}} (volcanoes in
 radar images of Venus, 5 highly imbalanced classes), the prototype ranks
 almost as well as gradient boosting (0.949 vs.\ 0.957) but predicts almost
-only the majority class (balanced accuracy 0.36 vs.\ 0.78). This explains
+only the majority class (balanced accuracy 0.36 vs.\ 0.78). This illustrates
 why it does not lead on balanced accuracy.
 
 \FloatBarrier
@@ -263,12 +270,12 @@ why it does not lead on balanced accuracy.
 
 In plain words, the task is to fill in a missing column of a spreadsheet,
 such as whether a patient is ill, from the rows where it is known. It is
-easy when a few columns clearly decide the answer, when there are many
-example rows and when there are only two possible answers. It is hard when
-there are many possible answers, when one answer is rare, when there are
-only a few example rows, or when identical rows have different answers, as
-in \dataset{Titanic} (\Cref{sec:data_quality}); our results show the same
-pattern (\Cref{sec:categories,sec:failures}). Classical methods learn every
+easy when the available columns clearly separate the answers. It is hard
+when only a few columns carry information, when one answer is rare, when a
+table is so small that a few unusual rows swing the score, or when
+identical rows have different answers, as in \dataset{Titanic}
+(\Cref{sec:data_quality}); our results show the same pattern
+(\Cref{sec:categories,sec:failures}). Classical methods learn every
 spreadsheet from scratch. Our model instead practised beforehand on about
 200{,}000 invented spreadsheets, like a person who has seen many similar
 cases, and fills in a new one at a glance. This experience only helps as far

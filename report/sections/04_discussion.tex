@@ -1,47 +1,50 @@
 % !TEX root = ../report_template.tex
 \section{Discussion}\label{sec:discussion}
-% 2 points.
+% 2 points. Structure and 3.1 from Bekir's draft; limitations and next steps
+% from Junqi's draft.
 
 \subsection{\tabicl{} method overview}\label{sec:method}
 % What does the model approximate (posterior predictive), and how do the
-% architecture and the prior achieve it? DRAFT, to be reviewed.
+% architecture and the prior achieve it?
 
 \tabicl{} is a prior-data fitted network \citep{muller2022pfn}: it is
 pretrained to predict the test rows of synthetic tables from their training
 rows, and the minimizer of this loss is the posterior predictive
 distribution under the prior,
-\[
-  p(y \mid x, \mathcal{D}_{\mathrm{train}})
-    = \int p(y \mid x, \phi)\, p(\phi \mid \mathcal{D}_{\mathrm{train}})\,
-      \mathrm{d}\phi ,
-\]
+$p(y \mid x, \mathcal{D}_{\mathrm{train}}) = \int p(y \mid x, \phi)\,
+p(\phi \mid \mathcal{D}_{\mathrm{train}})\, \mathrm{d}\phi$,
 where $\phi$ are the rules that generated a table. A forward pass thus
 approximates Bayesian inference over all rules the prior could have used,
 and how well it works on real tables depends on how well the prior covers
 them. The prior draws, for each table, a random graph of 2 to 32 nodes, each
 applying a random function such as a small neural network, a tree ensemble
 or a Gaussian process to its parents, and reads features and label from
-random nodes (\citealt{qu2026tabiclv2}, Sec.~5); \nanotabicl{} simplifies it
-slightly. The architecture processes a table in three stages, each sharing
-its weights over rows or columns so that tables of any size fit
-(\citealt{qu2026tabiclv2}, Sec.~3):
-\begin{itemize}
-  \item \textbf{Column embedding:} each cell is embedded with its
-    neighbouring columns and, in training rows, the label; attention within
-    the column relates it to the column's distribution.
-  \item \textbf{Row interaction:} a transformer over the columns of each row
-    merges them into a fixed-size row vector.
-  \item \textbf{In-context learning:} a transformer over the rows, in which
-    every row attends to the labelled training rows, predicts the classes
-    of the test rows.
-\end{itemize}
+random nodes (\citealt{qu2026tabiclv2}, Sec.~5 and App.~E.3). Categorical
+columns and the label are made from node values by nearest-center assignment
+or a softmax, and a table is drawn again if a small ExtraTrees model cannot
+predict its label better than a constant (App.~E.14). The prior of
+\nanotabicl{} that we use differs from the paper's in four ways: it draws
+the number of features log-uniformly instead of uniformly, allows up to 100
+categories instead of at most 9 (App.~E.3), has no filter for graphs in
+which features and label share no ancestor (Sec.~5), and keeps tables with a
+class only in the test rows (\Cref{sec:data_quality}). The architecture,
+which builds on TabICL \citep{qu2025tabicl}, processes a table in three
+stages, each sharing its weights over rows or columns so that tables of any
+size fit (\citealt{qu2026tabiclv2}, Sec.~3). In the \emph{column
+embedding}, each cell is embedded together with the columns one and three
+places further on and, in training rows, the label; attention within the
+column relates it to the column's distribution. In the \emph{row
+interaction}, a transformer over the columns of each row merges them into a
+fixed-size row vector. In the \emph{in-context learning} stage, a
+transformer over the rows, in which every row attends to the labelled
+training rows, predicts the classes of the test rows.
 The first two stages use column positions, so the output depends on the
 column order; the prior shuffles columns, and we average over 8 orders at
 test time (\Cref{sec:prototype}).
 
 \subsection{Challenges and limitations}\label{sec:challenges}
 % Why is the task not trivial? Why would a model trained only on synthetic
-% data be interesting? Limitations of our prototype. DRAFT, to be reviewed.
+% data be interesting? Limitations of our prototype.
 
 The task is not trivial because one model has to work on any table: tables
 differ in size, column meaning and label, are often small, and share no
@@ -52,40 +55,41 @@ data are written down explicitly instead of being hidden in a collection of
 real datasets. The price is that the model can only be as good as the
 prior's coverage of real tables (\Cref{sec:synthetic_vs_real}).
 
-Our prototype has clear limitations. Compared to \tabicl{}
-\citep{qu2026tabiclv2}, it is 4.8 times smaller and trained for only
-5~hours on one GPU, and it did not use that GPU fully: processing one table
-at a time, it occupied at most 3.3 of 80\,GB of memory. It also uses a
-simplified prior, leaves out most of the official ensembling and
-preprocessing (\Cref{sec:prototype}), and predicts at most 10 classes. Our evaluation
-is limited as well: the baselines are not tuned, the checkpoint was
-selected on the first split of \tabpfnval{} (\Cref{sec:overfitting_check}),
-and with 57 real datasets, groups of tables are small
-(\Cref{sec:categories}).
+Our prototype has clear limitations. Compared to \tabicl{}, it has about a
+fifth of the parameters and was trained for only 5~hours on one GPU, of
+which it used at most 3.3 of 80\,GB of memory, since it processes one table
+at a time. It also uses a simplified prior, leaves out most of the official
+ensembling and preprocessing, and predicts at most 10 classes. Our
+evaluation is limited as well: we trained only once, did not tune the
+baselines, and selected the checkpoint on the first split of \tabpfnval{},
+so results on these datasets may be optimistic; the second split uses the
+same datasets and is therefore not a fully independent test
+(\Cref{sec:overfitting_check}). With 57 real datasets, groups of tables are
+also small (\Cref{sec:categories}).
 
 \subsection{Summary and future work}\label{sec:summary}
 % What does (not) work, and why (not)? What is possible with our compute
-% budget? What would we try next? DRAFT, to be reviewed.
+% budget? What would we try next?
 
 Our prototype works: after 5~hours of training on synthetic tables only, it
 has the best mean ROC AUC and mean rank on both prior and real tables, and
-clearly better calibrated probabilities than all baselines
-(\Cref{sec:overall}). This reproduces the direction of the paper's main
-result, that \tabicl{} outperforms tree ensembles
-\citep{qu2026tabiclv2}, but much more weakly: the paper beats tuned trees,
-we only beat untuned ones. Our lead in ranking is small: on a typical
-table it is as good as the tree ensembles, on real tables it is on par with
-the random forest, and it fails where real tables differ from the prior,
-such as strongly imbalanced classes or a linear structure in many features
-(\Cref{sec:failures}). Since its ranking stopped improving after about
-5{,}000 steps while its probabilities kept improving
-(\Cref{sec:training}), more training of the same small model is unlikely to
-change this much.
+the lowest log loss and calibration error (\Cref{sec:overall}). This
+reproduces the direction of the paper's main result, that \tabicl{}
+outperforms tree ensembles \citep{qu2026tabiclv2}, but much more weakly: the
+paper beats tuned trees, we only beat untuned ones, and our lead is small. It
+fails on some tables, for example with strongly imbalanced classes
+(\dataset{volcanoes-a1}) or where a linear model wins (\dataset{hill-valley},
+\Cref{sec:failures}). Since its ranking stopped improving after about
+5{,}000 steps while its validation log loss fell only slowly
+(\Cref{sec:training}), more training of the same small model would probably
+not change this much.
 
-With our compute budget, the next steps are therefore: tuning the baselines
-for a fair comparison; a larger model, which the plateau suggests is the
-main bottleneck and which fits easily, since our run used only a small part
-of the GPU, ideally with several tables per forward pass; adapting the prior to the gaps we found, for example more
-binary and imbalanced tables and missing values; and adding the remaining
-parts of the official inference, such as further ensembling over column and
-class orders.
+With our compute budget, we would first make the evaluation more
+independent and fair: test on datasets not used for checkpoint selection,
+repeat the training with another random seed, and tune the baselines. We would then change one aspect of
+the prior at a time, such as smaller tables, stronger class imbalance or
+missing values, to see which changes improve the transfer to real tables. A
+larger model would also fit, since our run used only a small part of the
+GPU. Pretraining on real tables, which \citet{qu2026tabiclv2} note can be
+competitive or improve a model trained on synthetic tables
+(\Cref{sec:synthetic_vs_real}), is a further direction we have not tested.

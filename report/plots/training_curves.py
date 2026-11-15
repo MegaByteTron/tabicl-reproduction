@@ -55,14 +55,14 @@ def draw_validation_loss(ax, metrics: pd.DataFrame) -> None:
     evals = metrics.dropna(subset=["eval/log_loss"])
     best_step = evals.loc[evals["eval/log_loss"].idxmin(), "step"]
     ax.plot(evals["step"], evals["eval/log_loss"], color=COLORS[1])
-    ax.axvline(best_step, color=INK_MUTED, linestyle=":", label="best.pt")
+    ax.axvline(best_step, color=INK_MUTED, linestyle=":", label="evaluated checkpoint")
     # The first evals are far higher; zoom in on the rest, where overfitting
     # would show.
     late = evals.loc[evals["step"] >= 0.05 * evals["step"].max(), "eval/log_loss"]
     margin = 0.1 * (late.max() - late.min())
     ax.set(
         xlabel="Optimizer step",
-        ylabel=r"Log loss ($\mathtt{tabpfn\_val}$)",
+        ylabel=r"Log loss ($\mathit{tabpfn\_val}$)",
         ylim=(late.min() - margin, late.max() + margin),
     )
     ax.legend(loc="upper center")  # the free area above the curve
@@ -110,7 +110,7 @@ def draw_auc(ax, evals: pd.DataFrame, results: pd.DataFrame) -> None:
     late = curve[curve.index >= 0.05 * curve.index.max()]
     ax.set(
         xlabel="Optimizer step",
-        ylabel=r"Mean ROC AUC ($\mathtt{tabpfn\_val}$)",
+        ylabel=r"Mean ROC AUC ($\mathit{tabpfn\_val}$)",
         ylim=(min([late.min(), *means]) - 0.02, None),
     )
 
