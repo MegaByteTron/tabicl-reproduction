@@ -4,8 +4,8 @@ from comparison import (
     best_baseline,
     per_table,
     plot_by_category,
+    plot_differences,
     plot_mean_rank,
-    plot_overall,
     plot_per_dataset,
     table_info,
 )
@@ -33,7 +33,7 @@ def test_best_baseline_is_never_ours(results):
 
 
 @pytest.mark.parametrize(
-    "plot", [plot_overall, plot_mean_rank, plot_per_dataset, plot_by_category]
+    "plot", [plot_differences, plot_mean_rank, plot_per_dataset, plot_by_category]
 )
 def test_comparison_plots_write_pdf(tmp_path, results, plot):
     out = tmp_path / "figure.pdf"

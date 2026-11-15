@@ -57,7 +57,7 @@ uv run python report/plots/make_figures.py outputs/runs/<date>/<time>
 |---|---|
 | `training_curves` | training loss (prior) and `tabpfn_val` log loss over the steps; overfitting check |
 | `roc_auc_over_training` | our mean ROC AUC on `tabpfn_val` over the steps, baselines as lines |
-| `overall_roc_auc` | mean ROC AUC per model with 95% CIs, prior vs. OpenML tables |
+| `roc_auc_differences` | per-table ROC AUC of ours minus each baseline (box plots, wins:losses), prior vs. OpenML |
 | `mean_rank` | mean rank per model (1 = best per table), prior vs. OpenML tables |
 | `per_dataset` | our ROC AUC vs. the best baseline's, one point per table |
 | `roc_auc_by_category` | mean ROC AUC by number of classes, features and training rows |

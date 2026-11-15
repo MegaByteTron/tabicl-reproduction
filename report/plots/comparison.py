@@ -11,6 +11,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 from style import (
     COLORS,
     INK_MUTED,
@@ -124,11 +125,61 @@ def _dot_panels(stats: dict[str, pd.DataFrame], xlabel: str, outfile: Path) -> N
     save(fig, outfile)
 
 
-def plot_overall(df: pd.DataFrame, outfile: Path, metric: str = "roc_auc") -> None:
-    """Mean ROC AUC per model with 95% confidence intervals of the mean,
-    one panel per source (synthetic prior tables, real OpenML tables)."""
-    stats = {s: per_table(df, s, metric) for s in SOURCES if (df["source"] == s).any()}
-    _dot_panels(stats, f"Mean {METRIC_LABELS[metric]}", outfile)
+def plot_differences(df: pd.DataFrame, outfile: Path, metric: str = "roc_auc"):
+    """Per-table difference "ours minus baseline", one box per baseline and
+    one panel per source.
+
+    Unlike a mean with a confidence interval, the boxes show how often and by
+    how much our model wins or loses. Right of each box: tables won and lost.
+    """
+    use_style()
+    sources = [s for s in SOURCES if (df["source"] == s).any()]
+    fig, axes = plt.subplots(1, len(sources), figsize=(TEXT_WIDTH_IN, 1.9))
+    axes = np.atleast_1d(axes)
+    for ax, source in zip(axes, sources, strict=True):
+        scores = per_table(df, source, metric)
+        ours = next(m for m in scores.columns if is_ours(m))
+        baselines = [m for m in scores.columns if not is_ours(m)]
+        diffs = pd.DataFrame(
+            {model_label(b): scores[ours] - scores[b] for b in baselines}
+        )
+        if metric in LOWER_IS_BETTER:
+            diffs = -diffs  # positive always means ours is better
+        long = diffs.melt(var_name="baseline", value_name="diff")
+        sns.boxplot(
+            data=long,
+            x="diff",
+            y="baseline",
+            hue="baseline",
+            palette=[model_color(b) for b in baselines],
+            showfliers=False,  # 1,600 prior tables would bury the boxes
+            width=0.6,
+            linewidth=0.8,
+            ax=ax,
+        )
+        ax.axvline(0, color=INK_MUTED, linestyle="--", linewidth=0.8)
+        for y, b in enumerate(baselines):
+            wins = int((diffs[model_label(b)] > 0).sum())
+            losses = int((diffs[model_label(b)] < 0).sum())
+            ax.annotate(
+                f"{wins}:{losses}",
+                (1.0, y),
+                xycoords=("axes fraction", "data"),
+                xytext=(3, 0),
+                textcoords="offset points",
+                va="center",
+                fontsize=6,
+            )
+        ax.grid(axis="y", visible=False)
+        ax.set(
+            xlabel=f"{METRIC_LABELS[metric]}: ours $-$ baseline",
+            ylabel="",
+            title=f"{SOURCE_LABELS.get(source, source)}, {len(scores)} tables",
+        )
+    for ax in axes[1:]:
+        ax.tick_params(labelleft=False)  # same baselines in the same order
+    fig.tight_layout()
+    save(fig, outfile)
 
 
 def plot_mean_rank(df: pd.DataFrame, outfile: Path, metric: str = "roc_auc") -> None:

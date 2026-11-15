@@ -18,8 +18,8 @@ from comparison import (
     dataset_label,
     per_table,
     plot_by_category,
+    plot_differences,
     plot_mean_rank,
-    plot_overall,
     plot_per_dataset,
     table_info,
 )
@@ -96,7 +96,7 @@ def main() -> None:
     results = load_results(args.results)
     plot_training_curves(metrics, out / "training_curves.pdf")
     plot_auc_over_training(evals, results, out / "roc_auc_over_training.pdf")
-    plot_overall(results, out / "overall_roc_auc.pdf")
+    plot_differences(results, out / "roc_auc_differences.pdf")
     plot_mean_rank(results, out / "mean_rank.pdf")
     plot_by_category(results, out / "roc_auc_by_category.pdf")
     results_table(results, out.parent / "tables" / "results.tex")

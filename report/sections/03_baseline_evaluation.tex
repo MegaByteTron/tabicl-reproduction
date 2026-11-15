@@ -122,7 +122,13 @@ longer training mainly improved the probabilities, not the ranking.
 mean ROC AUC on both sources (prior: 0.890 vs.\ 0.884 for gradient boosting;
 OpenML: 0.901 vs.\ 0.898 for the random forest), but the margins are smaller
 than the confidence intervals of the means ($\pm 0.006$ on the prior,
-$\pm 0.031$ on OpenML; \Cref{fig:overall_roc_auc}). Ranks give a clearer picture (\Cref{fig:mean_rank}):
+$\pm 0.031$ on OpenML). The per-table differences
+(\Cref{fig:roc_auc_differences}) show why: against the tree ensembles, the
+median difference is almost zero (below 0.003 on both sources), so on a
+typical table the prototype and the trees are equally good; its mean lead
+comes from wins that are larger than its losses (prior, against gradient
+boosting: upper quartile $+0.017$, lower quartile $-0.001$). Ranks give a
+clearer picture (\Cref{fig:mean_rank}):
 on the prior tables, the prototype has the best mean rank (2.02 vs.\ 2.37)
 with non-overlapping intervals and beats gradient boosting on 835 tables
 while losing on 518, so its lead on synthetic tables is consistent. On the
@@ -141,10 +147,12 @@ overlap: it is on par with the random forest rather than clearly better.
 
 \begin{figure}[!ht]
   \centering
-  \includegraphics[width=\linewidth]{overall_roc_auc}
-  \caption{Mean ROC AUC per model with 95\% confidence intervals over tables,
-    on the prior tables (left) and the OpenML tables (right).}
-  \label{fig:overall_roc_auc}
+  \includegraphics[width=\linewidth]{roc_auc_differences}
+  \caption{Per-table difference in ROC AUC between our model and each
+    baseline (positive: ours is better), on the prior and the OpenML tables.
+    Boxes show the middle half of the tables, whiskers 1.5 times its width
+    (outliers not drawn); right: tables won and lost.}
+  \label{fig:roc_auc_differences}
 \end{figure}
 
 \begin{figure}[!ht]
