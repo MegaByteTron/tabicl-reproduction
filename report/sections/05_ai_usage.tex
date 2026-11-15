@@ -1,0 +1,28 @@
+% !TEX root = ../report_template.tex
+\section*{Use of AI tools}  % unnumbered: after the references, not counted
+% Required by the course: how we used AI for this milestone.
+
+We used AI tools for code and for the report; every result in this report
+comes from code we ran ourselves, and every number was checked against the
+results files and training logs.
+
+\begin{itemize}
+  \item \textbf{Tools:} Claude Code (Anthropic), on our own machines.
+  \item \textbf{Code:} AI helped us write and refactor parts of the code,
+    such as the evaluation and the scikit-learn style classifier (adapted
+    from nanoTabPFN).
+    It also helped review pull requests.
+  \item \textbf{Report:} AI helped us refine the text: rephrasing sentences,
+    correcting the grammar and making the wording clearer.
+  \item \textbf{What we did ourselves:} the project plan and task split, the
+    design decisions (model size, metrics, baselines, evaluation protocol),
+    running the training and all experiments, and the interpretation of the
+    results.
+  \item \textbf{Checks:} all code is covered by automated tests and type
+    and style checks, which also run in CI on every pull request; we reran
+    the baselines on a sample of tables to confirm the stored results, and
+    compared every number in the text with the results files and training
+    logs.
+  \item \textbf{Not used:} no AI agent was run on the cluster; we submitted
+    all cluster jobs ourselves, as the course requires.
+\end{itemize}

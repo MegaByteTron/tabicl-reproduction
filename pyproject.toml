@@ -16,6 +16,7 @@ dependencies = [
     "pyarrow>=26.0.1",
     "schedulefree>=1.4.1",
     "scikit-learn>=1.9.1",
+    "seaborn>=0.13.2",
     "torch>=2.15.0",
     "tqdm>=4.70.1",
 ]
@@ -43,6 +44,8 @@ testpaths = ["tests"]
 # Allows test files with the same name in different folders (tests/data, tests/model).
 # Network tests are skipped by default; run them with: uv run pytest -m network
 addopts = "--import-mode=importlib -m 'not network'"
+# The report's plot scripts import each other by file name (from style import ...).
+pythonpath = ["report/plots"]
 markers = ["network: needs internet access (OpenML)"]
 
 [tool.ruff]
@@ -61,6 +64,10 @@ select = [
 # Ruff's formatter does not wrap comments automatically.
 # Avoid lint errors from long comments in upstream code.
 ignore = ["E501"]
+
+[tool.ty.environment]
+# The report's plot scripts import each other by file name (from style import ...).
+extra-paths = ["report/plots"]
 
 # torch's type stubs make ty flag standard nn.Module idioms (buffers, forward overrides)
 [[tool.ty.overrides]]

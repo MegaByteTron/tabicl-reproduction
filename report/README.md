@@ -15,10 +15,10 @@ lists that section's guiding questions as comments.
 
 | File | Section | Points |
 |---|---|---|
-| `01_introduction.tex` | Introduction (short) | – |
 | `02_dataset_overview.tex` | Dataset overview | 4 |
 | `03_baseline_evaluation.tex` | Baseline and evaluation | 3 |
 | `04_discussion.tex` | Discussion | 2 |
+| `05_ai_usage.tex` | Use of AI tools (required) | – |
 
 Rules from the task sheet: at most 10 pages, no code in the report, submit
 the PDF on ISIS, and tag the submitted commit `ms1`.
@@ -46,15 +46,39 @@ From a terminal: `cd report && latexmk -pdf report_template.tex`.
 ## Figures
 
 Every figure is made by a script in `plots/`, never by hand, so it can be
-remade when the results change:
+remade when the results change. One command makes all of them from the
+training run and the results CSVs (`results/*.csv` by default):
 
 ```bash
-uv run python report/plots/training_curves.py <run folder>
+uv run python report/plots/make_figures.py outputs/runs/<date>/<time>
 ```
 
-The scripts share `plots/style.py`: same fonts, colors and width, saved as
-vector PDF into `figures/`. To add a figure, copy `training_curves.py`, change
-the plotting part, and call `save(fig, "<name>")`. Then in a section:
+| Figure | Shows |
+|---|---|
+| `training` | (a) training loss on the prior, (b) `tabpfn_val` log loss, (c) our `tabpfn_val` ROC AUC with the baselines as lines, over the steps |
+| `roc_auc_differences` | per-table ROC AUC of ours minus each baseline (box plots, wins:losses), prior vs. OpenML |
+| `per_dataset` | our ROC AUC vs. the best baseline's, one point per table |
+| `roc_auc_by_category` | mean ROC AUC by number of classes, features and training rows |
+| `confusion_matrices` | ours vs. the best baseline on the OpenML table we win most / lose most |
+
+The Section 2 figures need the data, not a run, so they have their own command:
+
+```bash
+uv run python -m tabicl_reproduction.explore   # report/data_stats.csv
+uv run python report/plots/data_overview.py
+```
+
+| Figure | Shows |
+|---|---|
+| `example_tables` | `show()` on the first 3 saved prior tables and 3 OpenML tables |
+| `table_shapes` | share of tables per training rows, features and classes, prior vs. OpenML |
+
+The plot code is in `plots/training_curves.py` (run logs), `plots/comparison.py`
+(results CSVs) and `plots/confusion.py`; every function takes the data and an
+`outfile`. They share `plots/style.py`: same fonts, colors (one per model) and
+width, saved as vector PDF into `figures/`. To add a figure, write a function
+next to the others, call `save(fig, outfile)`, add it to `make_figures.py` and
+a test in `tests/report/`. Then in a section:
 
 ```latex
 \begin{figure}

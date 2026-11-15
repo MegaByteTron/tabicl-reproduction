@@ -90,3 +90,10 @@ def test_failed_figure_is_closed(make_sample):
     with pytest.raises(RuntimeError, match="broken"):
         show(make_sample(), overlays=[broken_overlay])
     assert plt.get_fignums() == before
+
+
+def test_without_subtitles_and_with_extra_settings(make_sample):
+    fig = show(make_sample(), subtitles=False, rc={"axes.titlelocation": "center"})
+    ax = fig.axes[0]
+    assert len(ax.texts) == 0  # no "train · test · feat." line
+    assert ax.get_title(loc="center") and not ax.get_title(loc="left")

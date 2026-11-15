@@ -2,29 +2,270 @@
 \section{Dataset overview}\label{sec:data}
 % 4 points. The task sheet's points are guidelines, not a checklist.
 
-\subsection{Exploration of synthetic and real tables}\label{sec:exploration}
+\subsection{Exploration of synthetic tables and benchmark datasets}\label{sec:exploration}
 % What kinds of tables does the prior generate (sizes, feature types, number
 % of classes, targets)? What do the benchmark datasets (\tabpfnval{},
 % \citealt{hollmann2025tabpfn}) look like? Show examples made with show().
 
-\todo{prior tables and benchmark tables, with show() figures}
+\subsubsection{Synthetic tables from the prior}\label{sec:prior_tables}
+
+The model is pretrained only on synthetic tables drawn from a \emph{prior}:
+a program that generates random tables, each with its own randomly drawn
+rules linking the features to the label \citep{muller2022pfn,qu2026tabiclv2}.
+We use the slightly simplified prior of \nanotabicl{} \citep{nanotabicl}; how
+it generates tables is explained in \Cref{sec:method}. A table whose label a
+small tree ensemble cannot predict better than a constant is drawn again,
+so no table is pure noise. With our settings, the prior generates:
+\begin{itemize}
+  \item \textbf{Sizes:} 400 to 2{,}560 rows (log-uniform), of which 80\,\%
+    are training rows (320 to 2{,}048), and 2 to 100 features
+    (log-uniform).
+  \item \textbf{Feature types:} numerical and categorical columns. On
+    average 41\,\% of the columns are categorical, and at least 29\,\% of
+    the tables have none; a categorical column has 2 to 100 categories and
+    is given to the model as integer codes.
+  \item \textbf{Targets:} one classification label with 2 to 10 classes,
+    drawn uniformly.
+\end{itemize}
+For evaluation, we use 1{,}600 saved prior tables.
+
+\subsubsection{Benchmark datasets from OpenML}\label{sec:real_tables}
+
+Our real benchmark consists of the 57 classification datasets from OpenML
+\citep{vanschoren2013openml} that \citet{hollmann2025tabpfn} used to develop
+\tabpfn{} (Supplementary Table~5), and that \tabicl{} uses for its
+ablations;\footnote{The \tabicl{} paper speaks of 60 datasets
+(\citealt{qu2026tabiclv2}, Fig.~10), but the supplementary table of
+\citet{hollmann2025tabpfn} lists 57; we use these 57.} we refer to it as
+\tabpfnval{}. The list leaves out datasets with more than 500 features or
+more than 10 classes. The datasets come from many domains, for example
+medicine (\dataset{heart-c}), credit (\dataset{heloc}) and criminal justice
+(\dataset{compas-two-years}):
+\begin{itemize}
+  \item \textbf{Sizes:} 42 to 2{,}048 training rows (median 763) and 2 to
+    299 features (median 16).
+  \item \textbf{Feature types:} numerical and categorical columns; 32
+    datasets have categorical columns stored as text (17\,\% of all
+    columns; categories stored as numbers are not counted), and 12 have
+    missing values.
+  \item \textbf{Targets:} one label with 2 to 10 classes; 32 of the 57
+    datasets are binary.
+\end{itemize}
+
+\subsubsection{Examples and table shapes}\label{sec:examples}
+
+\Cref{fig:example_tables} shows three
+prior and three real tables, each projected onto its first two principal
+components. The prior tables differ a lot: in prior table~1 (middle) the
+classes lie along a curve and are well separated, while the seven classes of
+prior table~2 (right) overlap. The real tables show the same range: one
+penguin species is clearly separate and the other two sit side by side, the
+two classes of
+\dataset{heart-statlog} overlap, and \dataset{breast-tissue} has only 85
+training rows for six classes. A projection onto two axes hides the other
+directions, so overlap here does not mean the classes cannot be separated.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{example_tables}
+  \caption{Example tables. Top: the first three saved prior tables (not
+    hand-picked). Bottom: three OpenML tables with 3, 2 and 6 classes. Each
+    panel shows one table, projected onto the first two principal components
+    of its standardized training rows. Filled markers are training rows, hollow markers are
+    test rows, and each class has its own color and shape (at most 250 rows
+    shown per table).}
+  \label{fig:example_tables}
+\end{figure}
+
+\Cref{fig:table_shapes} compares the shapes of all tables. The prior covers
+the features of the real tables up to 100, but three real datasets have more
+(168, 260 and 299). The real tables are often smaller: 21 of 57 have fewer
+than 320 training rows, the smallest size the model saw in training. And while
+the prior's tables spread over 2 to 10 classes, more than half of the real
+tables are binary.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{table_shapes}
+  \caption{Share of tables per number of training rows, features and classes
+    for the 1,600 saved prior tables and the 57 OpenML tables (split 0).
+    Dashed lines: the range the prior was trained on (320 to 2,048 training
+    rows, at most 100 features). 2,048 is also the cap on the OpenML training
+    rows, so the 19 OpenML tables at the cap are larger datasets from which
+    2,048 training rows were sampled.}
+  \label{fig:table_shapes}
+\end{figure}
 
 \subsection{Data quality and splits}\label{sec:quality}
 % Problems that could distort the evaluation: degenerate synthetic tables,
 % duplicates between train and test rows, class imbalance, outliers.
 
-\todo{what we checked and found}
+\subsubsection{Train/test splits}\label{sec:splits}
 
+For each OpenML dataset, 20\,\% of the rows (rounded) form the test set, and a
+random sample of at most 2,048 of the other rows forms the training set; for
+the 19 datasets with more than 2,560 rows, some rows are not used. The split
+is stratified by class, and we use two splits with different random seeds, as
+the paper does (\citealt{qu2026tabiclv2}, Fig.~10). Rows without a label are
+dropped, which only happens in \dataset{Midwest\_Survey\_nominal} (284 of
+2,778 rows). \dataset{birds} has 19 label columns, one per bird species; we
+predict the most common species (Swainson's thrush) and drop the other label
+columns from the features. Prior rows are generated in random order, so the
+first 80\,\% of a table are a random training set. The 1,600 saved prior tables
+use a different random seed than pretraining.
+
+\subsubsection{Data quality}\label{sec:data_quality}
+
+We checked every evaluation table for problems that could distort the
+evaluation; \Cref{tab:quality} lists how many tables have each.
+
+\begin{table}[!ht]
+  \centering
+  \small
+  \setlength{\tabcolsep}{4.5pt}  % fits the text width with the problem column
+  \begin{tabular}{llrr}
+    \toprule
+    & & Prior & OpenML \\
+    & & (1{,}600 tables) & (57 datasets) \\
+    \midrule
+    Duplicates & Test row identical to a training row & 497 (31\,\%) & 22 (39\,\%) \\
+    & \quad some only seen with another label & 189 (12\,\%) & 7 (12\,\%) \\
+    & \quad share of all test rows & 20.0\,\% & 14.1\,\% \\
+    \midrule
+    Class imbalance & Largest class above 90\,\% & 27 (2\,\%) & 6 (11\,\%) \\
+    & \quad median share of the largest class & 0.39 & 0.56 \\
+    \midrule
+    Outliers & Test value over 10 std.\ devs. & 541 (34\,\%) & 13 (23\,\%) \\
+    & \quad over 100 (clipped by the model) & 54 (3\,\%) & 2 (4\,\%) \\
+    \midrule
+    Missing values & Any cell missing & -- & 12 (21\,\%) \\
+    \midrule
+    Constant columns & Column with one value in training & 244 (15\,\%) & 8 (14\,\%) \\
+    \midrule
+    Unseen classes & Class only in the test rows & 9 (1\,\%) & 0 \\
+    \bottomrule
+  \end{tabular}
+  \caption{Evaluation tables with each problem of \Cref{sec:data_quality}:
+    number of tables (share of all tables in brackets), unless marked as a
+    share or median.
+    Counted on the tables the model sees (after encoding and imputation),
+    except missing values, which are counted in the raw datasets; class
+    shares refer to the training rows. OpenML: split~0; split~1 differs by
+    at most 3 datasets per row.}
+  \label{tab:quality}
+\end{table}
+
+\begin{itemize}
+  \item \textbf{Duplicates:} 22 of the 57 OpenML datasets and 497 prior
+    tables have test rows that also occur among the training rows. This is
+    not a split error: some tables repeat rows naturally (\dataset{Titanic}
+    has only 14 distinct rows) or contain many repeated rows to begin with
+    (\dataset{mc1}). Duplicates do not always give the answer away: in
+    \dataset{Titanic}, repeated rows often occur with both labels, so even
+    the best possible model reaches only about 78\,\% accuracy. We keep them, since removing them
+    would change the benchmark.
+  \item \textbf{Class imbalance:} in 6 OpenML datasets, the largest class
+    holds more than 90\,\% of the training rows (up to 99.3\,\% in
+    \dataset{mc1}), so always predicting it already gives over 90\,\%
+    accuracy; this is why accuracy is not our main metric
+    (\Cref{sec:metrics}). The prior is more balanced (median share of the
+    largest class 0.39 vs.\ 0.56), partly because its tables have more
+    classes.
+  \item \textbf{Outliers:} measured in standard deviations of the column's
+    training rows ($|z|$), as the model scales its input, values above 100,
+    which the model clips, occur in 2 OpenML datasets and 54 prior tables.
+    Not every large $|z|$ is an error: a single 1 in a 0/1 column with
+    2,048 training rows has $|z| \approx 45$.
+  \item \textbf{Missing values:} 12 OpenML datasets have them, up to
+    72\,\% of the cells in \dataset{cjs}; the prior produces none (how we
+    fill them: \Cref{sec:preprocessing}).
+  \item \textbf{Constant columns and unseen classes:} 244 prior tables and
+    8 OpenML datasets have a column with a single value in the training
+    rows, which carries no information (\Cref{sec:preprocessing}). In 9 prior
+    tables, a class occurs only in the test rows; the \tabicl{} prior
+    discards such tables (\citealt{qu2026tabiclv2}, App.~E.13), while we
+    keep them and leave these rows out of the metrics. No table has only one
+    class.
+\end{itemize}
+
+
+\FloatBarrier
 \subsection{Preprocessing and representation}\label{sec:preprocessing}
 % Normalization, categorical features, missing values: what and why.
 % Which transformation we pass to load_data.
 % Can the model handle tables of different size or shape?
 
-\todo{preprocessing and why}
+The tables pass through four steps. Everything estimated from the data
+(means, standard deviations, the label mapping) comes from the training rows
+only, so no information from the test rows leaks in.
+\begin{itemize}
+  \item \textbf{Categorical columns} become integer codes, the form in which
+    the prior produces its categorical columns (\citealt{qu2026tabiclv2},
+    App.~E.13), so real and synthetic tables look alike to the model. The
+    list of codes is built on the whole table, which uses no labels.
+  \item \textbf{Labels} become $0, \dots, C-1$, using the classes of the
+    training rows, as the model expects.
+  \item \textbf{Missing values} are replaced by the mean of their column's
+    training rows (0 if the column has no value there), as in \tabicl{}
+    (\citealt{qu2026tabiclv2}, Sec.~8), since the prior never produces
+    missing values.
+  \item \textbf{Standardization} happens inside the model: each column is
+    scaled with the mean and standard deviation of its training rows, which
+    puts columns with different units on one scale. A column with a single
+    value becomes 0, and values are clipped to $\pm 100$, which bounds the
+    extreme values of \Cref{sec:data_quality}.
+\end{itemize}
+The first three steps are built into data loading, so we pass no extra
+transformation to the data loader; the baselines receive the
+tables after these steps. They are close to the authors'
+code,\footnote{\url{https://github.com/soda-inria/tabicl}} which also encodes
+categories as integers, fills missing numbers with the mean, drops constant
+columns and clips standardized values to $\pm 100$. It differs in that it
+gives a missing category its own code (we fill it with the mean code, which
+is not a real category), shrinks values beyond 4 standard deviations and, in
+half of its ensemble members, applies a power transform; we leave both out.
 
-\subsection{Synthetic vs.\ real data and open questions}\label{sec:questions}
+The model accepts tables with any number of rows and columns: it
+applies the same weights to every column and every row, and it reads the
+training rows as a context of any length (\Cref{sec:method}). Two limits
+remain. Its output layer has 10 classes, so tables with more classes cannot
+be predicted; \tabicl{} handles them by splitting the label into several
+parts with at most 10 values each (\citealt{qu2026tabiclv2}, App.~A.3),
+which we do not implement. And the 21 small and 3 wide OpenML datasets lie
+outside the sizes the model saw in training (\Cref{sec:examples}), so on
+them it has to extrapolate.
+
+\subsection{Synthetic vs.\ real data and questions about the data}\label{sec:questions}
 % How similar are the synthetic tables to real ones?
 % What could a machine learning model answer about the data,
 % and what would a human typically ask?
 
-\todo{synthetic vs.\ real; questions a model vs.\ a human would ask}
+\subsubsection{Synthetic vs.\ real tables}\label{sec:synthetic_vs_real}
+
+Our data shows clear differences (\Cref{fig:table_shapes} and \Cref{tab:quality}):
+real tables are more often binary and more imbalanced, have more extreme
+sizes, and contain missing values, which the prior never produces. Real
+columns also carry meaning, such as age, cholesterol or race, which the
+model ignores (\citealt{qu2026tabiclv2}, Sec.~8). \citet{qu2026tabiclv2}
+likewise note that pretraining on real tables can be competitive (TabDPT)
+and can improve \tabpfn{} (Real-TabPFN), so synthetic tables do not capture
+everything. How much the gap matters is measured in \Cref{sec:results}.
+
+\subsubsection{Questions of a model and of a human}\label{sec:open_questions}
+
+A model like ours answers one kind of question: given a row, which class is
+it, and how sure is the model? For an applicant in the credit dataset
+\dataset{heloc}, it gives the probability of each credit outcome; on
+average, our prototype has the lowest calibration error of all models
+(\Cref{sec:overall}). A person typically asks more:
+\begin{itemize}
+  \item \textbf{Why?} Which features led to rejecting this applicant?
+  \item \textbf{Is it fair?} Does the model treat defendants of different
+    race in \dataset{compas-two-years} differently, given that race is one
+    of its features?
+  \item \textbf{What if?} Would a patient in \dataset{heart-c} be healthier
+    with lower cholesterol?
+\end{itemize}
+Our model learns which feature values go together with which label, not
+what causes the label. It therefore cannot answer the last kind of question,
+and the first two need additional tools on top of its predictions.

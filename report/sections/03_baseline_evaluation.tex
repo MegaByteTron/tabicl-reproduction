@@ -2,59 +2,281 @@
 \section{Baseline and evaluation}\label{sec:evaluation}
 % 3 points.
 
-\subsection{Baseline models}\label{sec:baselines}
-% Simple baselines fitted per table (k-NN, linear models, random forests,
-% gradient-boosted trees) and the first approach from our prototype.
-% Why these? Introduce the prototype briefly here; the paper's method is
-% explained in \Cref{sec:method}.
+\subsection{Baselines and prototype}\label{sec:baselines}
 
-\todo{baselines and the prototype, and why}
+We compare classical machine learning classifiers
+(\Cref{sec:baseline_models}) with our \tabicl{} prototype
+(\Cref{sec:prototype}). The main difference
+lies in how they learn from a new table. Classical
+classifiers are fitted independently on the training
+rows of each table before making predictions.
+Our prototype instead uses in-context learning:
+it has been pretrained on synthetic tables and
+predicts test labels using the training rows as
+context, without updating its model parameters (see \Cref{sec:method}).
 
-\subsection{Evaluation metrics and protocol}\label{sec:metrics}
+\subsubsection{Baselines}\label{sec:baseline_models}
+
+Gradient-boosted decision trees and other tree ensembles have long been the
+strongest methods for tabular classification; on medium-sized datasets they
+outperform deep learning models trained per dataset
+\citep{grinsztajn2022tree}. \tabpfn{} and \tabicl{} report better results
+than tuned tree ensembles \citep{hollmann2025tabpfn,qu2026tabiclv2}, which
+makes tree ensembles the natural reference for our much smaller prototype.
+$k$-NN and logistic regression add reference points for instance-based and
+linear decision rules. All four come from scikit-learn
+\citep{pedregosa2011sklearn}, are fitted on the training rows of each table
+and use default settings, since our prototype is not tuned per table either
+(tuned gradient boosting would be a stronger reference):
+\begin{itemize}
+  \item \textbf{$k$-NN:} the majority class of the 5 nearest training rows,
+    on standardized features.
+  \item \textbf{Logistic regression:} a linear model on standardized
+    features.
+  \item \textbf{Random forest:} the average of 100 trees, each grown on a
+    random sample of the rows.
+  \item \textbf{Gradient boosting} (histogram-based): trees added one after
+    the other, each correcting the errors of the previous ones.
+\end{itemize}
+
+\subsubsection{Prototype}\label{sec:prototype}
+
+Our prototype builds on \nanotabicl{} \citep{nanotabicl}, a short research
+and teaching implementation of the full \tabicl{} architecture with a
+slightly simplified prior (\Cref{sec:prior_tables}). We chose it because it
+is small enough to read, train and change ourselves. It provides no training
+code, data loading or scikit-learn interface, so we added these, with a
+training loop modeled on nanoTabPFN \citep{pfefferle2025nanotabpfn}
+(schedule-free AdamW, gradient clipping, regular evaluation on real tables).
+Within our compute budget, we train a model with 5.7 million parameters
+(embedding size 96; 2, 2 and 4 blocks in the column, row and in-context
+stages), about a fifth of the original \tabicl{} size in \nanotabicl{},
+for 5~hours on one A100 GPU, on about 207{,}000 prior tables (25{,}840
+optimizer steps of 8 tables, processed one table at a time). As in the paper, it sees only synthetic tables
+in training. We evaluate the checkpoint with the lowest log loss on
+\tabpfnval{}, measured every 100 steps (step 23{,}900), and average its
+predictions over 8 random column orders, since its output depends on the
+column order. What it leaves out compared to the paper is listed in
+\Cref{sec:challenges}.
+
+\subsection{Evaluation metrics}\label{sec:metrics}
 % Which metrics are meaningful, and why?
-% Protocol: splits, rows per dataset, which datasets are skipped.
 % How do we aggregate over many datasets of different difficulty?
 
-\todo{metrics, protocol and aggregation}
+All models are scored on the same tables: the 1{,}600 saved prior tables and
+the 57 \tabpfnval{} datasets on two splits each (\Cref{sec:splits}).
+
+\subsubsection{Metrics}\label{sec:metric_definitions}
+
+\begin{itemize}
+  \item \textbf{ROC AUC} (main metric, as in \citealt{pfefferle2025nanotabpfn}):
+    the probability that a row of a class gets a higher predicted
+    probability for that class than a row of another class (one-vs-rest,
+    averaged over classes). It measures the ranking, independent of a
+    decision threshold and of class balance.
+  \item \textbf{Log loss:} the negative log probability of the true class.
+    It punishes confident mistakes, so it shows whether the predicted
+    probabilities can be trusted.
+  \item \textbf{Expected calibration error (ECE):} the gap between
+    confidence and accuracy over 15 confidence bins; 0 for a calibrated
+    model.
+  \item \textbf{Accuracy} and \textbf{balanced accuracy:} the share of
+    correct predictions, overall and averaged per class; the latter is not
+    dominated by the majority class.
+\end{itemize}
+
+\subsubsection{Aggregation}\label{sec:aggregation}
+
+Tables differ widely in difficulty. We first average the two splits of each
+OpenML dataset, so every table counts once, and then report per source the
+\textbf{mean} of each metric with a 95\,\% confidence interval, and the
+\textbf{mean rank} by ROC AUC (1 = best on a table). Ranks do not depend on
+how easy a table is, only on which model is better on it.
 
 \subsection{Experimental results}\label{sec:results}
-% Training and validation loss curves of the prototype; baselines vs.
-% prototype on synthetic and real tables, broken down by relevant
-% categories (e.g. number of classes, rows, features).
-% Captions only describe; the interpretation goes in the text.
+% Figures and tables/results.tex are made by report/plots/make_figures.py.
 
-\begin{figure}
+\subsubsection{Training progress}\label{sec:training}
+
+\begin{figure}[!h]  % right below the 2.3.1 heading
   \centering
-  \includegraphics[width=\linewidth]{training_curves}
-  \caption{Training loss on the prior (left) and log loss on the \tabpfnval{}
-    datasets (right) over the optimizer steps of the 2-hour run.}
-  \label{fig:training_curves}
+  \includegraphics[width=\linewidth]{training}
+  \caption{The 5-hour training run. (a)~Training loss on the prior (moving
+    average). (b)~Log loss on \tabpfnval{}; the dotted line marks the
+    evaluated checkpoint (step 23{,}900). (c)~Mean ROC AUC
+    on \tabpfnval{} (one column order), with the baselines as horizontal
+    lines; the star is the evaluated checkpoint scored with 8 column
+    orders.}
+  \label{fig:training}
 \end{figure}
 
-\Cref{fig:training_curves} shows \todo{what can be seen, and does it make sense?}
+\Cref{fig:training}c shows the mean ROC AUC of the prototype on
+the first split of \tabpfnval{} during pretraining. It passes $k$-NN and
+logistic regression within 500 steps, gradient boosting after about
+1{,}300 steps (5\,\% of the training) and the random forest at about step
+5{,}000, staying above it in 93\,\% of the later evaluations. After that,
+the ROC AUC hardly changes (0.894 to 0.900), while the validation log loss
+falls only slowly, without a clear rise (0.378 to 0.358 with one column order,
+\Cref{fig:training}b; 0.354 with 8 orders):
+longer training mainly improved the probabilities, not the ranking.
+Averaging over 8 column orders does not change the ROC AUC of the selected
+checkpoint (0.896 with one and with 8 orders).
 
-% Table pattern (booktabs, best value in bold):
-% \begin{table}
-%   \centering
-%   \begin{tabular}{lrrr}
-%     \toprule
-%     Method & Log loss & Accuracy & ROC AUC \\
-%     \midrule
-%     Prototype (ours) & \textbf{0.44} & 0.84 & 0.89 \\
-%     Random forest    & 0.50 & 0.82 & 0.87 \\
-%     \bottomrule
-%   \end{tabular}
-%   \caption{Mean scores on the \tabpfnval{} datasets. Best value in bold.}
-%   \label{tab:baselines}
-% \end{table}
+\subsubsection{Overall comparison}\label{sec:overall}
 
+\Cref{tab:results} summarizes all metrics. The prototype has the highest
+mean ROC AUC on both sources (prior: 0.890 vs.\ 0.884 for gradient boosting;
+OpenML: 0.901 vs.\ 0.898 for the random forest), but the margins are smaller
+than the confidence intervals of the means ($\pm 0.006$ on the prior,
+$\pm 0.031$ on OpenML). The per-table differences
+(\Cref{fig:roc_auc_differences}) show why: against the tree ensembles, the
+median difference is almost zero (below 0.003 on both sources), so on a
+typical table the prototype and the trees are equally good; its mean lead
+comes from wins that are larger than its losses (prior, against gradient
+boosting: upper quartile $+0.017$, lower quartile $-0.001$). Ranks give a
+clearer picture (last column of \Cref{tab:results}):
+on the prior tables, the prototype has the best mean rank (2.02 vs.\ 2.37)
+with non-overlapping 95\,\% intervals ($\pm 0.05$) and beats gradient boosting on 835 tables
+while losing on 518 (247 ties), so its lead on synthetic tables is consistent. On the
+57 OpenML tables it also ranks best (2.04 vs.\ 2.41), but the intervals
+($\pm 0.27$ and $\pm 0.25$) overlap: it is on par with the random forest rather than clearly better.
+
+\begin{table}[!ht]
+  \centering
+  \small
+  \setlength{\tabcolsep}{4pt}  % the seven columns fit the text width
+  \input{tables/results}
+  \caption{Mean scores per model on the prior and the OpenML tables (splits
+    averaged first). Rank: mean rank by ROC AUC, 1 = best on a table. Best
+    value per source in bold; $\uparrow$: higher is better, $\downarrow$:
+    lower is better.}
+  \label{tab:results}
+\end{table}
+
+\begin{figure}[!ht]
+  \centering
+  \includegraphics[width=\linewidth]{roc_auc_differences}
+  \caption{Per-table difference in ROC AUC between our model and each
+    baseline (positive: ours is better), on the prior and the OpenML tables.
+    Boxes show the middle half of the tables; whiskers reach the last table
+    within 1.5 times the box width (outliers not drawn); right: tables won
+    and lost.}
+  \label{fig:roc_auc_differences}
+\end{figure}
+
+The largest difference lies in the probabilities: the prototype has by far
+the lowest log loss (0.592 vs.\ 0.841 on the prior, 0.353 vs.\ 0.470 on
+OpenML) and the lowest ECE. It is trained to output a predictive
+distribution, while the baselines derive probabilities from votes or leaf
+frequencies. On balanced accuracy, however, it does not lead
+(\Cref{sec:failures}). $k$-NN and logistic regression are clearly behind
+(by 0.08 and 0.05 ROC AUC on the prior), so many tables need non-linear
+decision rules.
+
+\subsubsection{Breakdown by category}\label{sec:categories}
+
+\Cref{fig:roc_auc_by_category} breaks the ROC AUC down by the number of
+classes, features and training rows. On the prior tables, all models get
+worse with more classes, from about 0.93 on binary tables to 0.88 and below
+with 6 to 10 classes, while the lead of the prototype grows: it is level
+with gradient boosting on binary tables (0.925 vs.\ 0.928) and ahead by
+0.010 with 6 to 10 classes. Tables with few features are the hardest for all
+models; the number of training rows hardly changes the ranking.
+
+\begin{figure}[!ht]
+  \centering
+  \includegraphics[width=\linewidth]{roc_auc_by_category}
+  \caption{Mean ROC AUC per model by number of classes, features and training
+    rows, on the prior tables (top) and the OpenML tables (bottom). The
+    number of tables in each bin is given below it.}
+  \label{fig:roc_auc_by_category}
+\end{figure}
+
+The OpenML groups are small (8 to 32 tables), so these results are only
+indicative. The prototype again gains most on multiclass tables (3 to 5
+classes: 0.924 vs.\ 0.913 for the random forest) and is level on binary
+ones; it is behind on tables with more than 30 features, mostly because of
+one table (\Cref{sec:failures}). Binary tables are the easiest prior tables
+but the hardest OpenML tables, a first sign that synthetic and real tables
+differ (\Cref{sec:synthetic_vs_real}).
+
+\FloatBarrier
 \subsection{Overfitting and failure analysis}\label{sec:overfitting}
 % Is overfitting an issue? How do we check for it, and how do we avoid it?
 % Where do the baselines and the prototype fail?
 
-\todo{overfitting; where the methods fail}
+\subsubsection{Overfitting}\label{sec:overfitting_check}
 
+Every optimizer step draws new synthetic tables, so the prototype never sees
+a training table twice and cannot memorize it; its training loss is already
+a loss on unseen tables. The risk is rather overfitting to the prior, i.e.\
+learning properties of synthetic tables that real ones lack. We check this
+with the log loss on the real \tabpfnval{} tables during training
+(\Cref{fig:training}a and b). Both losses fall quickly in the first
+5{,}000 steps; afterwards, the training loss keeps decreasing slowly (about
+0.68 to 0.62, averaged over 2{,}000 steps), while the validation loss falls
+only slowly (0.378 to 0.358), without a clear rise.
+There is thus no overfitting to the prior within our run, but further
+progress on synthetic tables carries over to real ones only marginally.
+
+A second risk is model selection on the first split of \tabpfnval{}. On the
+second split, which was not used for it, the prototype is even slightly
+better (ROC AUC 0.905 vs.\ 0.896). This split uses the same datasets, but
+the 1{,}600 prior tables, which were not used for the selection either,
+show the same lead (\Cref{sec:overall}). New tables in
+every step, a real validation set and evaluation prior tables with their
+own seed keep overfitting in check.
+
+\subsubsection{Failure analysis}\label{sec:failures}
+
+\Cref{fig:per_dataset} compares the prototype with the strongest baseline
+table by table. Most points lie near the diagonal; the prototype is better
+on 835 of the 1{,}600 prior tables and 33 of the 57 OpenML datasets. Its
+largest OpenML losses are on very small tables: two software defect
+datasets (\href{https://www.openml.org/d/1071}{\dataset{mw1}},
+\href{https://www.openml.org/d/1060}{\dataset{ar3}}) and a textbook example
+(\href{https://www.openml.org/d/465}{\dataset{analcatdata\_cyyoung8092}}),
+all from OpenML \citep{vanschoren2013openml}, with only 50 to 322 training
+and 13 to 81 test rows, where a few misranked rows change the score a lot.
+
+\begin{figure}[!ht]
+  \centering
+  \includegraphics[width=\linewidth]{per_dataset}
+  \caption{ROC AUC of our model against the best baseline (gradient boosting
+    on the prior, random forest on OpenML), one point per table. Above the
+    diagonal, our model is better; the three largest OpenML losses are
+    named.}
+  \label{fig:per_dataset}
+\end{figure}
+
+A different failure is \href{https://www.openml.org/d/1479}{\dataset{hill-valley}},
+whose rows are 100 points of a curve forming a hill or a valley: logistic
+regression reaches 0.949, while the prototype and the tree ensembles stay
+near chance (0.53 to 0.61). This single table causes most of the weakness on
+tables with more than 30 features; without it, the prototype is within 0.005
+of the tree ensembles there. The largest wins are on tables driven by
+interactions between features, such as
+\href{https://www.openml.org/d/40646}{\dataset{GAMETES\_Epistasis}} (0.688
+vs.\ 0.603). Finally, a good ranking does not guarantee good decisions: on
+\href{https://www.openml.org/d/1527}{\dataset{volcanoes-a1}} (volcanoes in
+radar images of Venus, 5 highly imbalanced classes), the prototype ranks
+almost as well as gradient boosting (0.949 vs.\ 0.957) but predicts almost
+only the majority class (balanced accuracy 0.36 vs.\ 0.78). This illustrates
+why it does not lead on balanced accuracy.
+
+\FloatBarrier
 \subsection{Non-technical view}\label{sec:nontechnical}
 % What makes the task easy or hard, in plain words?
 
-\todo{what makes the task easy or hard}
+In plain words, the task is to fill in a missing column of a spreadsheet,
+such as whether a patient is ill, from the rows where it is known. It is
+easy when the available columns clearly separate the answers. It is hard
+when only a few columns carry information, when one answer is rare, when a
+table is so small that a few unusual rows swing the score, or when
+identical rows have different answers, as in \dataset{Titanic}
+(\Cref{sec:data_quality}); our results show the same pattern
+(\Cref{sec:categories,sec:failures}). Classical methods learn every
+spreadsheet from scratch. Our model instead practised beforehand on about
+200{,}000 invented spreadsheets, like a person who has seen many similar
+cases, and fills in a new one at a glance. This experience only helps as far
+as real spreadsheets resemble the invented ones.

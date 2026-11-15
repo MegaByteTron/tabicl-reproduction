@@ -36,6 +36,7 @@ RC_PARAMS: dict[RcKeyType, Any] = {
     "axes.spines.right": False,
     "axes.titlesize": 9,
     "axes.titleweight": "bold",
+    "axes.titlelocation": "left",
     "axes.titlecolor": INK,
     "axes.labelsize": 7,
     "axes.labelcolor": INK_MUTED,
