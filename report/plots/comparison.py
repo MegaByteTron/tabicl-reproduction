@@ -39,9 +39,8 @@ DATASET_NAMES = {str(i): name for name, i in TABPFN_VAL_DATASETS.items()}
 
 
 def dataset_label(table_id: str) -> str:
-    """OpenML dataset name in typewriter font (cmr10 has no underscore)."""
-    name = DATASET_NAMES.get(table_id, table_id).replace("_", r"\_")
-    return rf"$\mathtt{{{name}}}$"
+    """OpenML dataset name; cmr10 has no underscore, so it comes from mathtext."""
+    return DATASET_NAMES.get(table_id, table_id).replace("_", r"$\_$")
 
 
 # Bins of the table properties, (upper edges, labels); a bin holds the values
